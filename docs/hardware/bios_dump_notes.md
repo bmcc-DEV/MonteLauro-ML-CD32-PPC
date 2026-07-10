@@ -1,4 +1,4 @@
-# BIOS Dump Notes — CD³² Kickstart ROM
+# BIOS Dump Notes — CD3² Kickstart ROM
 
 ## Origem
 
