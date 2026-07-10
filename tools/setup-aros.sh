@@ -47,7 +47,10 @@ else
     echo "  AVISO: $KSTARTUP nao encontrado. Patch manual necessario."
 fi
 
-# 4. Configurar AROS (se ainda nao configurado)
+# 4. Instalar dependencias Python
+python3 -c "import mako" 2>/dev/null || pip install --break-system-packages mako 2>/dev/null
+
+# 5. Configurar AROS (se ainda nao configurado)
 if [ ! -f "$AROS/build/ppc/Makefile" ]; then
     echo "  Configurando AROS para PPC..."
     mkdir -p "$AROS/build/ppc"
