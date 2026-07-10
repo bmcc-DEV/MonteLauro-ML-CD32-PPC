@@ -347,12 +347,12 @@ fn main() {
                     eprintln!("Warning: kernel file not found: {}", kp.display());
                 }
             } else {
-                // Kernel placeholder (stack of RFI instructions)
-                for off in (0x10000..0x12000).step_by(4) {
-                    rom.w32(off, 0x4C000064); // RFI as NOP
+                // Kernel placeholder no ROM offset 0x10000 (fonte da copia do ColdFire)
+                // O ColdFire copia 0xFF01_0000 → 0x0000_2000
+                rom.w32(0x10000, 0x4BFFFFFC); // b * em offset 0x10000 → RAM 0x2000
+                for off in (0x10004..0x12000).step_by(4) {
+                    rom.w32(off, 0x60000000); // ori r0, r0, 0 (NOP)
                 }
-                // Write AROS entry signature
-                rom.w32(0x2000, 0x7C000000); // wait instruction
             }
 
             rom.w16(0x7FFFE, 0xFEED);
