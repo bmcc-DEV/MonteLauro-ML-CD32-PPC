@@ -1,4 +1,4 @@
-# Boot Sequence CD³²
+# Boot Sequence CD3²
 
 ## Fase 0: Power-On Reset
 
