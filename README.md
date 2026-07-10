@@ -28,10 +28,7 @@ Projeto completo de engenharia reversa e emulação do hardware especulado. Comp
 
 ### Pendentes
 
-- [ ] BIOS dump real (Kickstart 4.0) para validação do boot
-- [ ] Suporte a cartucho de expansão DVD (hardware real)
-- [ ] Disassembler PPC/ColdFire completo (não apenas trace)
-- [ ] Save states
+- [ ] BIOS dump real (Kickstart 4.0) — único item que realmente falta pra validar o boot completo
 
 ## Compilando
 
