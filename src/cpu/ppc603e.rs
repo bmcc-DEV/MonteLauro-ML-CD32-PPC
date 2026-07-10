@@ -109,19 +109,19 @@ impl Ppu {
         for i in 0..4 {
             let u = bats[i * 2];
             let l = bats[i * 2 + 1];
-            let vs = (u >> 31) & 1;
-            let vp = (u >> 30) & 1;
+            let vs = (u >> 1) & 1;   // u32 bit 1 = Vs
+            let vp = u & 1;          // u32 bit 0 = Vp
             let msr_pr = (self.regs.msr >> 19) & 1;
             let valid = if msr_pr == 0 { vs != 0 } else { vp != 0 };
             if !valid { continue; }
 
-            let bepi = u & 0xFFFC_0000;       // upper 15 bits of effective page
-            let bl = (u >> 21) & 0xF;          // block length (4 bits, 0-15)
-            let block_bits = bl + 17;           // 128KB (2^17) to 256MB (2^28)
+            let bepi = u & 0xFFFE_0000;       // u32 bits 31-17 = BEPI (15 bits)
+            let bl = (u >> 12) & 0x1F;          // u32 bits 16-12 = BL (5 bits)
+            let block_bits = bl + 17;           // 128KB (2^17) to 4GB (2^32)
             let mask = if block_bits >= 32 { 0 } else { !((1u64 << block_bits) - 1) as u32 };
 
             if (addr ^ bepi) & mask == 0 {
-                let brpn = l & 0xFFFC_0000;
+                let brpn = l & 0xFFFE_0000;    // u32 bits 31-17 = BRPN
                 let phys = (addr & !mask) | (brpn & mask);
                 return Ok(phys);
             }
@@ -260,12 +260,12 @@ impl Ppu {
                 // Reuse op_bform but need to handle differently
                 let lk = insn & 1;
                 let aa = (insn >> 1) & 1;
-                let li = ((insn >> 2) & 0x00FF_FFFF) as u32;
+                let li = ((((insn >> 2) & 0x00FF_FFFF) as i32) << 8) >> 8;
                 if lk == 1 { self.regs.lr = self.regs.pc; }
                 let target = if aa == 1 {
-                    li << 2
+                    (li << 2) as u32
                 } else {
-                    (self.regs.pc as i32).wrapping_add((li as i32) << 2) as u32
+                    (self.regs.pc as i32).wrapping_add(li << 2) as u32
                 };
                 self.regs.pc = target;
                 Ok(1)

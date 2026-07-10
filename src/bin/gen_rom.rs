@@ -166,10 +166,10 @@ fn build_ppc_aros() -> Vec<u32> {
     //       = 44 | 0x80000000 | 0x40000000 = 0xC000_002C
 
     // IBAT0 — build via addis + ori (valores são constantes de config)
-    // BAT0U = 0xC000_002C (BEPI=0, BL=11→256MB, Vs=1, Vp=1)
-    // Precisamos carregar via addis+ori porque 0xC000002C não cabe em i16
-    w!(i_addis(3, 0, (-0x4000i16)));
-    w!(i_ori(3, 3, 0x002C));     // r3 = 0xC000_002C (BAT0U)
+    // BAT0U: BEPI=0, BL=11 (256MB), Vs=1 (u32 bit1), Vp=1 (u32 bit0)
+    // Valor = (11 << 12) | (1 << 1) | 1 = 0xB003
+    w!(i_addis(3, 0, 0));
+    w!(i_ori(3, 3, 0xB003));     // r3 = 0x0000_B003 (BAT0U)
     w!(i_mtspr(528, 3));          // IBAT0U
     w!(i_addis(3, 0, 0));
     w!(i_ori(3, 3, 0x0001));     // r3 = BAT0L (BRPN=0, PP=1)
