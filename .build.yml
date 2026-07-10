@@ -1,0 +1,35 @@
+image: ubuntu/lts
+packages:
+  - cargo
+  - libsdl2-dev
+sources:
+  - https://git.sr.ht/~bmcc_dev/MonteLauro-ML-CD32-PPC
+tasks:
+  - build: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo build --release
+  - headers: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --bin gen-headers --release
+  - check-abi: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --bin check-abi --release
+  - rom-hello: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --bin gen-rom --release -- --target hello --output rom/hello_cd32.rom
+  - test-hello: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --release --bin cd32-rs -- --bios rom/hello_cd32.rom --cycles 5000000
+  - rom-aros: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --bin gen-rom --release -- --target aros-bootstrap --output rom/aros_cd32.rom
+  - test-aros: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --release --bin cd32-rs -- --bios rom/aros_cd32.rom --cycles 5000000
+  - save-load: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo run --release --bin cd32-rs -- --bios rom/aros_cd32.rom --cycles 100000 --save-state /tmp/test.sav
+      cargo run --release --bin cd32-rs -- --load-state /tmp/test.sav
+  - sdl: |
+      cd MonteLauro-ML-CD32-PPC
+      cargo build --release --features sdl-frontend
