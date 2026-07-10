@@ -4,7 +4,7 @@
 //! e periféricos. O barramento ColdFire roda a 140MHz e o PPC a 266MHz.
 //! Acessos conflitantes são resolvidos por prioridade fixa (ver memory_map.md).
 
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use crate::memory::{MemRegion, MemoryMap};
 use crate::gpu::Gpu;
@@ -55,55 +55,46 @@ impl DvdExpansion {
     }
 }
 
+// ColdFire I/O — registradores de 32 bits (lwz/stw nativos do PPC).
+// Mapeamento por slot de 4 bytes:
+//   0x00: UART_DATA    0x04: UART_STATUS
+//   0x10: SPI_DATA     0x14: (reserved)
+//   0x20: GPIO/JOYPAD  0x24: (reserved)
+//   0x30: RTC          0x34: (reserved)
+
 struct ColdFireIo {
-    uart_data: AtomicU16,
-    uart_status: AtomicU16,
-    spi_data: AtomicU16,
-    gpio: AtomicU16,
-    rtc: AtomicU16,
+    regs: [AtomicU32; 16],
 }
 
 impl ColdFireIo {
     fn new() -> Self {
-        Self {
-            uart_data: AtomicU16::new(0),
-            uart_status: AtomicU16::new(0x00C0),
-            spi_data: AtomicU16::new(0),
-            gpio: AtomicU16::new(0),
-            rtc: AtomicU16::new(0),
-        }
+        let mut regs: [AtomicU32; 16] = Default::default();
+        regs[1] = AtomicU32::new(0x000000C0); // UART status: TX ready
+        Self { regs }
     }
 
-    fn read(&self, offset: u32) -> u16 {
-        match offset {
-            0x00 => self.uart_data.load(Ordering::Relaxed),
-            0x02 => self.uart_status.load(Ordering::Relaxed),
-            0x10 => self.spi_data.load(Ordering::Relaxed),
-            0x20 => self.gpio.load(Ordering::Relaxed),
-            0x30 => self.rtc.load(Ordering::Relaxed),
-            _ => {
-                log::warn!("CF I/O: read from unknown offset 0x{:04X}", offset);
-                0
-            }
-        }
+    fn read32(&self, offset: u32) -> u32 {
+        let idx = (offset >> 2) as usize;
+        if idx < 16 { self.regs[idx].load(Ordering::Relaxed) } else { 0 }
     }
 
-    fn write(&mut self, offset: u32, val: u16) {
-        match offset {
-            0x00 => {
-                // UART TX — log como debug serial
+    fn write32(&mut self, offset: u32, val: u32) {
+        let idx = (offset >> 2) as usize;
+        if idx >= 16 { return; }
+        match idx {
+            0 => {
                 let byte = val as u8;
                 if byte >= 0x20 && byte < 0x7f {
                     log::info!("CF UART: '{}'", byte as char);
                 }
-                self.uart_data.store(val, Ordering::Relaxed);
-                self.uart_status.store(0x00C0, Ordering::Relaxed);
+                self.regs[0].store(val, Ordering::Relaxed);
+                self.regs[1].store(0x000000C0, Ordering::Relaxed);
             }
-            0x02 => self.uart_status.store(val, Ordering::Relaxed),
-            0x10 => self.spi_data.store(val, Ordering::Relaxed),
-            0x20 => self.gpio.store(val, Ordering::Relaxed),
-            0x30 => self.rtc.store(val, Ordering::Relaxed),
-            _ => log::warn!("CF I/O: write to unknown offset 0x{:04X}", offset),
+            1 => self.regs[1].store(val, Ordering::Relaxed),
+            4 => self.regs[4].store(val, Ordering::Relaxed),
+            8 => self.regs[8].store(val, Ordering::Relaxed),
+            12 => self.regs[12].store(val, Ordering::Relaxed),
+            _ => log::warn!("CF I/O: write32 to unknown idx {}", idx),
         }
     }
 }
@@ -205,7 +196,7 @@ impl Bus {
     }
 
     pub fn set_joypad(&mut self, state: u16) {
-        self.cfio.gpio.store(state, Ordering::Relaxed);
+        self.cfio.write32(0x20, state as u32);
     }
 }
 
@@ -222,11 +213,9 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => self.read_mailbox(addr).map(|v| v as u8),
             MemRegion::Vram => self.mem.read_byte(addr),
             MemRegion::ColdFireIo => {
-                if addr & 1 == 0 {
-                    Some((self.cfio.read(addr & 0x3F) >> 8) as u8)
-                } else {
-                    Some((self.cfio.read(addr & 0x3F) & 0xFF) as u8)
-                }
+                let v = self.cfio.read32(addr & 0x3F);
+                let shift = (addr & 3) << 3;
+                Some((v >> shift) as u8)
             }
             MemRegion::DmaRegs => Some((self.dma.read_reg(addr) & 0xFF) as u8),
             _ => None,
@@ -244,7 +233,11 @@ impl BusInterface for Bus {
             MemRegion::MiuRegs => self.read_miu_reg(addr).map(|v| v as u16),
             MemRegion::Mailbox => self.read_mailbox(addr).map(|v| v as u16),
             MemRegion::Vram => self.mem.read_half(addr),
-            MemRegion::ColdFireIo => Some(self.cfio.read(addr & 0x3F)),
+            MemRegion::ColdFireIo => {
+                let v = self.cfio.read32(addr & 0x3F);
+                let shift = (addr & 2) << 3;
+                Some((v >> shift) as u16)
+            }
             MemRegion::DmaRegs => Some((self.dma.read_reg(addr) & 0xFFFF) as u16),
             _ => None,
         }
@@ -262,9 +255,7 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => self.read_mailbox(addr),
             MemRegion::Vram => self.mem.read_word(addr),
             MemRegion::ColdFireIo => {
-                let hi = self.cfio.read(addr & 0x3F) as u32;
-                let lo = self.cfio.read((addr & 0x3F) + 2) as u32;
-                Some((hi << 16) | lo)
+                Some(self.cfio.read32(addr & 0x3F))
             }
             MemRegion::DmaRegs => Some(self.dma.read_reg(addr)),
             _ => None,
@@ -281,12 +272,13 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => { self.write_mailbox(addr, val as u32); Some(()) }
             MemRegion::Vram => self.mem.write_byte(addr, val),
             MemRegion::ColdFireIo => {
-                let offset = addr & 0x3F;
-                let shifted = if offset & 1 == 0 { (val as u16) << 8 | 0x00FF } else { val as u16 | (0xFF00) };
-                self.cfio.write(offset & !1, shifted);
+                let off = addr & 0x3F;
+                let shift = (off & 3) << 3;
+                let mask = !(0xFFu32 << shift);
+                let prev = self.cfio.read32(off & !3);
+                self.cfio.write32(off & !3, (prev & mask) | ((val as u32) << shift));
                 Some(())
             }
-            MemRegion::DmaRegs => { self.dma.write_reg(addr, val as u32); Some(()) }
             _ => None,
         }
     }
@@ -302,7 +294,11 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => { self.write_mailbox(addr, val as u32); Some(()) }
             MemRegion::Vram => self.mem.write_half(addr, val),
             MemRegion::ColdFireIo => {
-                self.cfio.write(addr & 0x3F, val);
+                let off = addr & 0x3F;
+                let shift = (off & 2) << 3;
+                let mask = !(0xFFFFu32 << shift);
+                let prev = self.cfio.read32(off & !2);
+                self.cfio.write32(off & !2, (prev & mask) | ((val as u32) << shift));
                 Some(())
             }
             MemRegion::DmaRegs => { self.dma.write_reg(addr, val as u32); Some(()) }
@@ -330,8 +326,7 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => { self.write_mailbox(addr, val); Some(()) }
             MemRegion::Vram => self.mem.write_word(addr, val),
             MemRegion::ColdFireIo => {
-                self.cfio.write(addr & 0x3F, (val >> 16) as u16);
-                self.cfio.write((addr & 0x3F) + 2, val as u16);
+                self.cfio.write32(addr & 0x3F, val);
                 Some(())
             }
             MemRegion::DmaRegs => { self.dma.write_reg(addr, val); Some(()) }
