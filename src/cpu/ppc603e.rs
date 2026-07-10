@@ -260,12 +260,12 @@ impl Ppu {
                 // Reuse op_bform but need to handle differently
                 let lk = insn & 1;
                 let aa = (insn >> 1) & 1;
-                let li = ((insn >> 2) & 0x3FF_FFFF) as u32;
+                let li = ((insn >> 2) & 0x00FF_FFFF) as u32;
                 if lk == 1 { self.regs.lr = self.regs.pc; }
                 let target = if aa == 1 {
                     li << 2
                 } else {
-                    self.regs.pc.wrapping_add(((li as i32) << 2) as u32).wrapping_sub(4)
+                    (self.regs.pc as i32).wrapping_add((li as i32) << 2) as u32
                 };
                 self.regs.pc = target;
                 Ok(1)
@@ -557,8 +557,8 @@ impl Ppu {
             0b0000010011 => self.op_mfcr(insn),   // MFCR
             0b0010011001 => self.op_lwzx(insn, bus), // LWZX indexed
             0b0010001001 => self.op_stwx(insn, bus), // STWX
-            0b0010010010 => self.op_mtspr(insn),    // MTSPR
-            0b0101010011 => self.op_mfspr(insn),    // MFSPR
+            0b0111010011 => self.op_mtspr(insn),    // MTSPR (xop=467)
+            0b0101010011 => self.op_mfspr(insn),    // MFSPR (xop=339)
             _ => {
                 log::warn!("PPC: X-form instruction xop={} not implemented", xop);
                 Err(PpcError::IllegalInstruction(self.regs.pc.wrapping_sub(4)))
