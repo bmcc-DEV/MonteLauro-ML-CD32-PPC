@@ -47,12 +47,25 @@ else
     echo "  AVISO: $KSTARTUP nao encontrado. Patch manual necessario."
 fi
 
-# 4. Verificar toolchain
+# 4. Configurar AROS (se ainda nao configurado)
+if [ ! -f "$AROS/build/ppc/Makefile" ]; then
+    echo "  Configurando AROS para PPC..."
+    mkdir -p "$AROS/build/ppc"
+    (cd "$AROS/build/ppc" && ../../configure --target=sam440-ppc --with-aros-toolchain="$AROS" --enable-crosstools 2>&1) || {
+        echo "  AVISO: configure falhou. Execute manualmente:"
+        echo "    mkdir -p $AROS/build/ppc && cd $AROS/build/ppc"
+        echo "    $AROS/configure --target=sam440-ppc --with-aros-toolchain=$AROS --enable-crosstools"
+    }
+fi
+
+# 5. Verificar toolchain
 TOOLCHAIN=$(command -v powerpc-elf-gcc || echo "")
 if [ -z "$TOOLCHAIN" ]; then
     echo "  AVISO: powerpc-elf-gcc nao encontrado no PATH"
-    echo "  Instale o toolchain AROS PPC primeiro:"
-    echo "    make -C $AROS toolchain"
+    echo "  Para construir o toolchain AROS PPC:"
+    echo "    sudo apt-get install automake autoconf libtool flex bison"
+    echo "    make -C $AROS/tools cross-toolchain cpu=ppc"
+    echo "  Ou baixe um toolchain pre-compilado de www.aros.org"
 fi
 
 echo ""
