@@ -7,7 +7,7 @@ SDK para desenvolvimento de software nativo na plataforma MonteLauro ML-CD32-PPC
 O sistema usa **AROS** como firmware padrão (open source, APL license),
 eliminando a dependência de BIOS proprietária.
 
-[![CI Status](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC/actions/workflows/ci.yml/badge.svg)](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC/actions)
+CI: `make ci` — pipeline completo local, sem dependência de serviços externos.
 
 **Repositório:** [github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC)
 
