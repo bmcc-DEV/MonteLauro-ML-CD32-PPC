@@ -1,0 +1,25 @@
+[package]
+name = "cd32-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Amiga CD³² community emulator — phantom console preservation project"
+default-run = "cd32-rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+thiserror = "1"
+log = "0.4"
+env_logger = "0.11"
+sdl2 = { version = "0.37", optional = true }
+rayon = "1"
+
+[[bin]]
+name = "gen-rom"
+path = "src/bin/gen_rom.rs"
+
+[features]
+default = []
+sdl-frontend = ["sdl2"]
+allow_cf_local_write = []
+
+
