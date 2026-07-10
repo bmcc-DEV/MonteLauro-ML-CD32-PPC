@@ -1,16 +1,18 @@
 # MonteLauro CD3² — Makefile de Desenvolvimento
 # Uso: make <target> [ROM=...] [KERNEL=...] [AROS=...]
 
-CARGO   ?= cargo
-ROM     ?= rom/aros_cd32.rom
-KERNEL  ?= aros-ppc.bin
-CYCLES  ?= 5000000
-AROS    ?= $(AROS)
+CARGO    ?= cargo
+ROM      ?= rom/aros_cd32.rom
+KERNEL   ?= aros-ppc.bin
+CYCLES   ?= 5000000
+AROS     ?= /tmp/AROS
+DOCKER   ?= docker
 
 .PHONY: all build rom-hello rom-aros headers check-abi \
         test-hello test-aros trace-hello trace-aros \
         sdl-hello sdl-aros save load \
         aros-setup aros-build \
+        docker-build docker-toolchain docker-kernel \
         clean distclean
 
 all: build headers check-abi
@@ -89,7 +91,18 @@ load:
 	$(CARGO) run --release --bin cd32-rs -- \
 		--load-state estado.sav
 
-# ── Integracao AROS ──────────────────────────────────────────────────
+# ── Docker Toolchain ────────────────────────────────────────────────
+
+docker-build:
+	$(DOCKER) build -t montelauro-toolchain docker/
+
+docker-toolchain: docker-build
+	$(DOCKER) run --rm -v $(PWD):/build montelauro-toolchain
+
+docker-kernel: docker-toolchain
+	$(MAKE) rom-aros KERNEL=aros-ppc.bin
+
+# ── Integracao AROS (nativa) ───────────────────────────────────────
 
 aros-setup:
 	@if [ -z "$(AROS)" ]; then \
@@ -99,8 +112,8 @@ aros-setup:
 aros-build: aros-setup
 	@if [ -z "$(AROS)" ]; then \
 		echo "ERRO: Defina AROS=/path/para/AROS"; exit 1; fi
-	make -C $(AROS) cpu=ppc board=montelauro-cd32
-	cp $(AROS)/bin/ppc/aros-ppc.bin rom/aros-ppc.bin
+	cd $(AROS)/build/ppc && make -j$(shell nproc) cpu=ppc board=montelauro-cd32
+	cp $(AROS)/build/ppc/bin/sam440-ppc/aros-ppc.bin rom/aros-ppc.bin
 	$(MAKE) rom-aros KERNEL=rom/aros-ppc.bin
 
 # ── Validação completa ────────────────────────────────────────────────
