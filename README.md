@@ -1,6 +1,6 @@
 # CD32-PPC
 
-Emulador comunitário do **Amiga CD³²** — console "phantom" cancelado pela Amiga Technologies GmbH (pós-Escom) em 1998-99.
+Emulador comunitário do **Amiga CD3²** — console "phantom" cancelado pela Amiga Technologies GmbH (pós-Escom) em 1998-99.
 
 ## Status
 
