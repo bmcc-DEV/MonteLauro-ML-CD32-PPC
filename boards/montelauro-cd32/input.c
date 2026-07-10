@@ -31,7 +31,7 @@ void ml_input_init(void)
 /* ── Poll do joypad via ColdFire mailbox ────────────────────────────
  *
  * Envia comando CF_CMD_IO_READ com offset = 0x20 (GPIO).
- * O ColdFire responde com o valor de 16 bits do GPIO.
+ * O ColdFire responde com o valor de 32 bits do GPIO (apenas bits 0-7 usados).
  *
  * Mapeamento de bits:
  *   0=UP, 1=DOWN, 2=LEFT, 3=RIGHT, 4=A, 5=B, 6=START, 7=SELECT
