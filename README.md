@@ -1,6 +1,10 @@
-# CD32-PPC
+# MonteLauro CD³²
 
-Emulador comunitário do **Amiga CD3²** — console "phantom" cancelado pela Amiga Technologies GmbH (pós-Escom) em 1998-99.
+**MonteLauro CD³²** — Plataforma aberta baseada no console "phantom" Amiga CD³².
+
+Este repositório contém o emulador, firmware bootstrap e SDK para a plataforma MonteLauro CD³².
+O sistema usa AROS como firmware padrão (open source, APL license), eliminando a dependência
+de BIOS proprietária.
 
 ## Status
 
@@ -127,4 +131,28 @@ src/bin/
 | VRAM | 8MB (framebuffers, depth, texturas) |
 | Áudio | DSP + ColdFire, 8 canais estéreo |
 | Mídia | CD-ROM 12x (expansão DVD opcional) |
-| SO | AmigaOS PPC híbrido |
+| SO | AmigaOS PPC híbrido / AROS |
+
+## Makefile
+
+```bash
+make build              # Compila o emulador
+make rom-hello          # Gera ROM "Hello CD3²" (validação)
+make rom-aros           # Gera ROM com bootstrap AROS
+make headers            # Gera headers C/Rust da ABI
+make test-hello         # Testa ROM hello
+make test-aros          # Testa bootstrap AROS
+make trace-hello        # Trace detalhado da ROM hello
+make trace-aros         # Trace detalhado do bootstrap AROS
+make sdl-hello          # Frontend gráfico com ROM hello
+make sdl-aros           # Frontend gráfico com bootstrap AROS
+make save ROM=rom/aros_cd32.rom  # Salva estado
+```
+
+## Licença
+
+O código original MonteLauro (emulador, bootstrap, tooling, SDK) é distribuído
+sob licença MIT. Componentes derivados de AROS seguem a AROS Public License (APL).
+Consulte LICENSE, LICENSE.APL e LICENSE.GPL/LGPL para detalhes.
+
+Repositório: [github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC)

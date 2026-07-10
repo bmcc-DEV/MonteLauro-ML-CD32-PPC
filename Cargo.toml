@@ -17,6 +17,10 @@ rayon = "1"
 name = "gen-rom"
 path = "src/bin/gen_rom.rs"
 
+[[bin]]
+name = "gen-headers"
+path = "tools/gen_headers.rs"
+
 [features]
 default = []
 sdl-frontend = ["sdl2"]
