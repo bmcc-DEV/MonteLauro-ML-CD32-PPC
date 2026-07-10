@@ -21,6 +21,10 @@ path = "src/bin/gen_rom.rs"
 name = "gen-headers"
 path = "tools/gen_headers.rs"
 
+[[bin]]
+name = "check-abi"
+path = "tools/check_abi_conformance.rs"
+
 [features]
 default = []
 sdl-frontend = ["sdl2"]

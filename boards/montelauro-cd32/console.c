@@ -9,7 +9,7 @@
  */
 
 #include <exec/types.h>
-#include <hardware/led.h>
+#include <string.h>
 
 #include "board.h"
 
@@ -98,15 +98,38 @@ static uint32_t fg_color = 0xFFFFFFFF;  /* branco */
 static uint32_t bg_color = 0x00000000;  /* preto */
 static int initialized = 0;
 
+static const char *banner[] = {
+    "╔══════════════════════════════════════════════╗",
+    "║                                              ║",
+    "║         MonteLauro CD3²  v1.0                ║",
+    "║         Plataforma Aberta ML-CD32-PPC         ║",
+    "║                                              ║",
+    "║  PPC603e @ 266MHz  |  ColdFire V4e @ 140MHz  ║",
+    "║  GPU Lisa II TBDR |  20MB RAM  |  8MB VRAM   ║",
+    "║                                              ║",
+    "║         Inicializando AROS...                 ║",
+    "║                                              ║",
+    "╚══════════════════════════════════════════════╝",
+    NULL
+};
+
 void ml_console_init(void)
 {
-    /* Limpa framebuffer */
     fill_rect(0, 0, FB_WIDTH, FB_HEIGHT, bg_color);
     cursor_x = 0;
     cursor_y = 0;
     initialized = 1;
 
-    /* Kick GPU para mostrar o framebuffer */
+    /* Draw boot banner */
+    ml_console_set_color(0xFF88FF00, 0x00000000);  /* amber on black */
+    for (int i = 0; banner[i]; i++) {
+        cursor_y = i * FONT_H + 20;
+        cursor_x = (FB_WIDTH - (int)strlen(banner[i]) * FONT_W) / 2;
+        ml_console_puts(banner[i]);
+    }
+    ml_console_set_color(0xFFFFFFFF, 0x00000000);  /* white on black */
+    cursor_x = 0;
+    cursor_y = 12 * FONT_H + 20;
     kick_gpu();
 }
 
