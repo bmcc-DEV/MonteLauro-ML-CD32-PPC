@@ -1,4 +1,4 @@
-# CD³² Memory Map (v0.2 — comunidade reverse)
+# CD3² Memory Map (v0.2 — comunidade reverse)
 
 ## Visão Geral
 
