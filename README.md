@@ -217,7 +217,7 @@ AROS kernel
 | VRAM | 8MB (framebuffers, depth, texturas) |
 | Áudio | DSP + ColdFire, 8 canais estéreo |
 | Mídia | CD-ROM 12x (expansão DVD opcional) |
-| SO | AmigaOS PPC híbrido / AROS |
+| SO | AROS |
 
 ## Licença
 
