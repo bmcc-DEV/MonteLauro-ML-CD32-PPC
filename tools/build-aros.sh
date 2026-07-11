@@ -1,76 +1,72 @@
 #!/bin/sh
-# build-aros.sh — Builda o kernel AROS PPC para MonteLauro CD32
+# build-aros.sh — Obtem o kernel AROS PPC para MonteLauro CD32
 #
-# Uso: ./tools/build-aros.sh [caminho/para/AROS]
+# Tenta, em ordem:
+#   1. Usar kernel ja compilado em /tmp/AROS (build anterior)
+#   2. Baixar pre-compilado do AROS Nightly Builds
+#   3. Buildar do source (via Docker, ~2h, requer rede estavel)
 #
-# Requer:
-#   - Docker instalado
-#   - ~8GB de RAM disponivel
-#   - ~5GB de disco
-#   - Conexao de rede estavel (para baixar binutils/gcc)
+# Uso: ./tools/build-aros.sh
 
 set -e
 
-AROS="${1:-/home/bruno/Documentos/AROS}"
-IMAGE="montelauro-toolchain"
+KERNEL_DST="aros-ppc.bin"
 
-echo "=== MonteLauro CD32 — AROS PPC Kernel Build ==="
+echo "=== MonteLauro CD32 — AROS PPC Kernel ==="
 
-# 1. Verificar Docker
-docker info >/dev/null 2>&1 || { echo "ERRO: Docker nao instalado"; exit 1; }
+# ── Opcao 1: Kernel ja compilado local ─────────────────────────────
+if [ -f "/tmp/AROS/build/ppc/bin/sam440-ppc/aros-ppc.bin" ]; then
+    cp /tmp/AROS/build/ppc/bin/sam440-ppc/aros-ppc.bin "$KERNEL_DST"
+    echo "Kernel copiado de /tmp/AROS (build anterior)"
+    echo "Comando: make rom-aros KERNEL=$KERNEL_DST"
+    exit 0
+fi
 
-# 2. Clonar AROS se necessario
+# ── Opcao 2: Download pre-compilado ────────────────────────────────
+echo "Procurando binary pre-compilado..."
+for URL in \
+    "https://www.aros.org/nightly1/sam440-ppc/aros-ppc.bin" \
+    "https://github.com/aros-development-team/AROS/releases/download/nightly/sam440-ppc-aros-ppc.bin"; do
+    echo "  Tentando $URL ..."
+    if wget -q -O "$KERNEL_DST" "$URL" 2>/dev/null; then
+        echo "Kernel baixado de $URL"
+        ls -lh "$KERNEL_DST"
+        echo "Comando: make rom-aros KERNEL=$KERNEL_DST"
+        exit 0
+    fi
+done
+
+# ── Opcao 3: Build do source ───────────────────────────────────────
+echo "Nenhum binary pre-compilado encontrado."
+echo "Buildando AROS do source (isto leva ~2h)..."
+echo ""
+
+AROS="/home/bruno/Documentos/AROS"
 if [ ! -f "$AROS/configure" ]; then
-    echo "==> Clonando AROS em $AROS..."
+    echo "Clonando AROS..."
     git clone --depth=1 https://github.com/aros-development-team/AROS.git "$AROS"
 fi
 
-# 3. Buildar imagem Docker (toolchain + depends)
-echo "==> Buildando imagem Docker..."
+echo "Buildando imagem Docker..."
 make docker-build
 
-# 4. Configurar AROS
-echo "==> Configurando AROS para PPC..."
-docker run --rm -v "$AROS:/aros" "$IMAGE" sh -c "
+echo "Configurando AROS..."
+docker run --rm -v "$AROS:/aros" montelauro-toolchain sh -c "
     rm -rf /aros/build/ppc 2>/dev/null
     mkdir -p /aros/build/ppc
     cd /aros/build/ppc
     /aros/configure --target=sam440-ppc --enable-crosstools
-" 2>&1 | grep -E "error|complete|required|falhou|AVISO"
+"
 
-# 5. Buildar
-echo "==> Buildando AROS (isto leva ~2h)..."
-echo "    Para acompanhar: tail -f /tmp/aros-build.log"
-echo "    O make e retomavel — pode interromper com Ctrl+C e continuar depois."
+echo "Buildando (make -j2)..."
+echo "  Log: tail -f /tmp/aros-build.log"
+docker run --rm -v "$AROS:/aros" -m 8g montelauro-toolchain \
+    sh -c "cd /aros/build/ppc && make -j2" > /tmp/aros-build.log 2>&1 &
+
+echo "Build em background (PID $!)"
+echo "Acompanhe com: tail -f /tmp/aros-build.log"
 echo ""
-nohup docker run --rm -v "$AROS:/aros" -m 8g "$IMAGE" sh -c "
-    cd /aros/build/ppc && make -j2
-" > /tmp/aros-build.log 2>&1 &
-BUILD_PID=$!
-
-echo "Build iniciado (PID $BUILD_PID)"
-echo "Log: /tmp/aros-build.log"
-
-# 6. Aguardar e verificar resultado
-echo ""
-echo "Aguardando conclusao..."
-wait $BUILD_PID 2>/dev/null || true
-
-if [ -f "$AROS/build/ppc/bin/sam440-ppc/aros-ppc.bin" ]; then
-    cp "$AROS/build/ppc/bin/sam440-ppc/aros-ppc.bin" .
-    echo "=== KERNEL AROS COMPILADO ==="
-    echo "Arquivo: aros-ppc.bin"
-    echo "Comando: make rom-aros KERNEL=aros-ppc.bin && make test-aros"
-else
-    echo "=== KERNEL NAO COMPILADO ==="
-    echo "O build do AROS pode ter falhado. Verifique:"
-    echo "  tail -50 /tmp/aros-build.log | grep error"
-    echo ""
-    echo "Causas comuns:"
-    echo "  - Rede instavel durante download de binutils/gcc (CTRL+C e tente de novo)"
-    echo "  - RAM insuficiente (use -m 8g ou mais)"
-    echo "  - Dependencias faltando no container (veja docker/Dockerfile)"
-    echo ""
-    echo "Se o problema persistir, baixe um aros-ppc.bin pre-compilado de:"
-    echo "  https://github.com/aros-development-team/AROS/releases"
-fi
+echo "Se o build falhar por download de binutils/gcc, tente:"
+echo "  1. docker exec -it $(docker ps -lq) sh"
+echo "  2. wget http://ftp.gnu.org/gnu/binutils/binutils-2.32.tar.xz -P /aros/build/ppc/bin/Sources/"
+echo "E depois: make -j2"

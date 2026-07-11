@@ -15,10 +15,11 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential automake autoconf libtool \
     flex bison \
     python3 python3-mako \
-    g++ \
-    make cmake \
+    g++ make cmake \
     netpbm libpng-dev \
+    curl wget ca-certificates \
     gcc-powerpc-linux-gnu \
+    libsdl2-dev mesa-common-dev libgl1-mesa-dev \
     && rm -rf /var/lib/apt/lists/*
 
 VOLUME /build
