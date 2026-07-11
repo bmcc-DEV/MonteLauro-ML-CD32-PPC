@@ -7,7 +7,7 @@ O acesso ao hardware é feito via memory-mapped I/O nos barramentos PPC e ColdFi
 
 | Endereço | Região | Descrição |
 |----------|--------|-----------|
-| 0x0000_0000 | Unified RAM (24MB) | Memória principal, zero wait-state (PPC) |
+| 0x0000_0000 | Unified RAM (28MB) | Memória principal, zero wait-state (PPC) |
 | 0x0100_0000 | Mailbox (overlay) | 16 bytes MMIO PPC↔ColdFire |
 | 0x0200_0000 | ColdFire Local RAM (2MB) | Escrita apenas pelo ColdFire |
 | 0x0220_0000 | ColdFire I/O | UART, SPI, GPIO (joypad), RTC |
@@ -15,7 +15,6 @@ O acesso ao hardware é feito via memory-mapped I/O nos barramentos PPC e ColdFi
 | 0x03D0_0000 | Audio DSP | 64 registers de controle de áudio |
 | 0x03E0_0000 | DMA Controller | 4 canais, 16 registers |
 | 0x0400_0000 | GPU Regs (64KB) | Controle do renderizador TBDR |
-| 0x0401_0000 | VRAM (8MB) | Framebuffers, depths, texturas |
 | 0x0500_0000 | MIU Regs | Memory Interface Unit |
 
 ---
@@ -48,7 +47,7 @@ A GPU é um tile-based deferred renderer. O pipeline:
 #define GPU_CTRL     (*(volatile uint32_t*)(GPU_BASE + 0x00))
 #define GPU_LIST_ADDR (*(volatile uint32_t*)(GPU_BASE + 0x04))
 #define GPU_FRAME    (*(volatile uint32_t*)(GPU_BASE + 0x10))
-#define VRAM_BASE    0x04010000
+#define VRAM_BASE    0x01B00000
 
 void video_init() {
     // Framebuffer começa no início da VRAM
@@ -234,9 +233,17 @@ Comandos:
 
 | Região | Endereço | Tamanho |
 |--------|----------|---------|
-| Unified RAM | 0x0000_0000 | 24 MB |
+| Unified RAM | 0x0000_0000 | 28 MB |
 | Boot ROM | 0xFF00_0000 | 512 KB |
-| VRAM | 0x0401_0000 | 8 MB |
+
+### Organização da Unified RAM (28 MB)
+
+A Unified RAM de 28 MB é organizada da seguinte forma:
+- **0x0000_0000 - 0x01AFFFFF**: RAM geral para sistema, jogo, áudio, etc. (~26 MB)
+- **0x01B0_0000 - 0x01BFFFFF**: Reserva para framebuffer de vídeo e texturas (1 MB)
+- **0x01C0_0000 - 0x01FFFF_FF**: Espaço reservado para expansão ou uso específico do sistema (~3 MB)
+
+O framebuffer de vídeo começa por padrão em 0x01B0_0000 (definido como `CD32_VRAM_BASE` em `cd32.h`), mas pode ser posicionado em qualquer lugar dentro da Unified RAM conforme necessário pelo desenvolvedor.
 
 ### Layout de Boot
 

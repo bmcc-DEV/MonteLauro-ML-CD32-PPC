@@ -14,7 +14,7 @@
 
 /* ── Hardware base addresses ─────────────────────────────────────── */
 #define CD32_GPU_BASE     0x04000000UL
-#define CD32_VRAM_BASE    0x04010000UL
+#define CD32_VRAM_BASE    0x01B00000UL
 #define CD32_DSP_BASE     0x03D00000UL
 #define CD32_DMA_BASE     0x03E00000UL
 #define CD32_CDROM_BASE   0x03000000UL
@@ -40,6 +40,12 @@ void cd32_video_wait_vblank(void);
 void cd32_video_clear(uint32_t color);
 void cd32_video_putpixel(int x, int y, uint32_t color);
 void cd32_video_rect(int x, int y, int w, int h, uint32_t color);
+
+/* ── GPU API ─────────────────────────────────────────────────────── */
+void cd32_gpu_clear(uint32_t color);
+void cd32_gpu_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color);
+void cd32_gpu_line(int x0, int y0, int x1, int y1, uint32_t color);
+void cd32_gpu_present(void);
 
 /* ── Input ───────────────────────────────────────────────────────── */
 enum {

@@ -230,8 +230,7 @@ kernel.c:_start()
 | CPU | PowerPC 603e @ 266MHz |
 | Coprocessador | ColdFire V4e @ 140MHz |
 | GPU | TBDR custom, 6M polys/s ("Lisa II") |
-| RAM | 24MB unificada (0x00000000–0x017FFFFF) |
-| VRAM | 8MB (framebuffers, depth, texturas) |
+| RAM | 28MB unificada (0x00000000–0x01BFFFFF) |
 | Áudio | DSP + ColdFire, 8 canais estéreo |
 | Mídia | CD-ROM 12x (expansão DVD opcional) |
 | SO | Runtime próprio + AROS (legacy) |

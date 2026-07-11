@@ -26,7 +26,7 @@
 #define ML_DSP_BASE         0x03D00000UL
 #define ML_DMA_BASE         0x03E00000UL
 #define ML_GPU_BASE         0x04000000UL
-#define ML_VRAM_BASE        0x04010000UL
+#define ML_VRAM_BASE        0x01B00000UL
 #define ML_VRAM_SIZE        0x00800000UL  /* 8 MB */
 #define ML_MIU_BASE         0x05000000UL
 #define ML_DVD_BASE         0x08000000UL
