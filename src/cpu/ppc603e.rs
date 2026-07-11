@@ -291,7 +291,7 @@ impl Ppu {
                 let target = if aa == 1 {
                     (bd_sext << 2) as u32
                 } else {
-                    (self.regs.pc as i32).wrapping_add((bd_sext << 2) as i32) as u32
+                     ((self.regs.pc as i32).wrapping_sub(4)).wrapping_add((bd_sext << 2) as i32) as u32
                 };
                 // Branch logic
                 if (bo & 0x14) == 0x14 {
@@ -322,7 +322,7 @@ impl Ppu {
                 let target = if aa == 1 {
                     (li << 2) as u32
                 } else {
-                    (self.regs.pc as i32).wrapping_add(li << 2) as u32
+                    ((self.regs.pc as i32).wrapping_sub(4)).wrapping_add(li << 2) as u32
                 };
                 self.regs.pc = target;
                 Ok(1)
