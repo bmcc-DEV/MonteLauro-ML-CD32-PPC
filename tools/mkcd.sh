@@ -7,7 +7,7 @@
 
 set -e
 
-ELF="${1:-kernel/demo/demo.elf}"
+ELF="${1:-kernel/demo.elf}"
 OUT="${2:-rom/jogo.iso}"
 TMP=$(mktemp -d)
 
