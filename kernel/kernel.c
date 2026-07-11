@@ -13,7 +13,7 @@
 extern void _init(void);
 
 // Ponteiro para a struct de plataforma (passada pelo bootstrap)
-static volatile uint32_t *platform = (uint32_t*)0x01000100;
+static volatile uint32_t *platform = (uint32_t*)0x0000FC00;
 
 void _start(void)
 {

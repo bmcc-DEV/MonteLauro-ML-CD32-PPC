@@ -181,9 +181,9 @@ fn build_ppc_aros() -> Vec<u32> {
     w!(i_addis(1, 0, 0x00FF));    // r1 = 0x00FF_0000
     w!(i_ori(1, 1, 0x0000));
 
-    // === Fase 4: Construir struct CD32Platform na Chip RAM ===
-    w!(i_addis(3, 0, 0x0100));   // r3 = 0x0100_0100 (&platform)
-    w!(i_ori(3, 3, 0x0100));
+    // === Fase 4: Construir struct CD32Platform na Sys RAM ===
+    w!(i_addis(3, 0, 0x0000));   // r3 = 0x0000_FC00 (&platform, dentro da SysRAM)
+    w!(i_ori(3, 3, 0xFC00));
 
     // magic = 0xCD32_0001
     w!(i_addis(4, 0, (-0x32CEi16)));
@@ -371,16 +371,16 @@ fn main() {
             w!((16<<26) | (4<<21) | (2<<16) | (0xFFFD & 0x3FFF));
             w!(i_addis(1,0,0x00FF));
             w!(i_ori(1,1,0));
-            w!(i_addis(3,0,0x0100));
-            w!(i_ori(3,3,0x0100));
-            // struct CD32Platform (minima)
+            // struct CD32Platform em 0x0000_FC00 (dentro da SysRAM, longe de conflitos)
+            w!(i_addis(3,0,0x0000));
+            w!(i_ori(3,3,0xFC00));
             w!(i_addis(4,0,(-0x32CEi16)));
             w!(i_ori(4,4,0x0001));
             w!(i_stw(4,0,3));
             w!(i_addis(4,0,0x013F));
             w!(i_ori(4,4,0xFFF8));
             w!(i_stw(4,4,3));
-            // Jump to game entry (kernel copiado para 0x2000)
+            // Jump to game entry (kernel em 0x2000)
             w!(i_b(0x2000, (0x100 + ppc.len()*4 + 4) as u32));
 
             rom.words(0x0000, &cf);
