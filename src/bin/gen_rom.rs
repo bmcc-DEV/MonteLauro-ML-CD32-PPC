@@ -177,8 +177,8 @@ fn build_ppc_aros() -> Vec<u32> {
     w!(i_mtspr(536, 3));          // DBAT0U = IBAT0U
     w!(i_mtspr(537, 3));          // DBAT0L = IBAT0L
 
-    // === Fase 3: Stack pointer (64KB abaixo do topo dos 24MB) ===
-    w!(i_addis(1, 0, 0x017F));    // r1 = 0x017F_0000
+    // === Fase 3: Stack pointer (64KB abaixo do topo dos 28MB) ===
+    w!(i_addis(1, 0, 0x01BF));    // r1 = 0x01BF_0000
     w!(i_ori(1, 1, 0x0000));
 
     // === Fase 4: Construir struct CD32Platform na RAM unificada ===
@@ -189,26 +189,26 @@ fn build_ppc_aros() -> Vec<u32> {
     w!(i_addis(4, 0, (-0x32CEi16)));
     w!(i_ori(4, 4, 0x0001));     // r4 = 0xCD32_0001
     w!(i_stw(4, 0, 3));
-    // total_ram = 24MB = 0x0180_0000
-    w!(i_addis(4, 0, 0x0180));
+    // total_ram = 28MB = 0x01C0_0000
+    w!(i_addis(4, 0, 0x01C0));
     w!(i_stw(4, 4, 3));
     // chip_ram_base = 0 (alias unified)
     w!(i_addis(4, 0, 0));
     w!(i_stw(4, 8, 3));
-    // chip_ram_size = 24MB
-    w!(i_addis(4, 0, 0x0180));
+    // chip_ram_size = 28MB
+    w!(i_addis(4, 0, 0x01C0));
     w!(i_stw(4, 12, 3));
     // sys_ram_base = 0
     w!(i_addis(4, 0, 0));
     w!(i_stw(4, 16, 3));
-    // sys_ram_size = 24MB
-    w!(i_addis(4, 0, 0x0180));
+    // sys_ram_size = 28MB
+    w!(i_addis(4, 0, 0x01C0));
     w!(i_stw(4, 20, 3));
-    // vram_base = 0x0401_0000
-    w!(i_addis(4, 0, 0x0401));
+    // vram_base = 0x01B0_0000 (dentro da RAM unificada)
+    w!(i_addis(4, 0, 0x01B0));
     w!(i_stw(4, 24, 3));
-    // vram_size = 8MB
-    w!(i_addis(4, 0, 0x0080));
+    // vram_size = 1MB
+    w!(i_addis(4, 0, 0x0010));
     w!(i_stw(4, 28, 3));
     // boot_rom_base = 0xFF00_0000
     w!(i_addis(4, 0, (-0x0100i16)));
@@ -355,19 +355,29 @@ fn main() {
             println!("AROS bootstrap: PPC {} instr  CF {} words", ppc.len(), cf.len());
         }
         "game" => {
-            // Game runtime: mesma logica do aros-bootstrap mas com entry em 0x10000
+            // Game runtime: mesma logica do aros-bootstrap mas com entry do ELF
             let cf = build_cf_aros();
-            let kdata = match &kernel_path {
-                Some(kp) => fs::read(kp).unwrap_or_default(),
-                None => vec![],
+            let (kdata, entry) = match &kernel_path {
+                Some(kp) => {
+                    let data = fs::read(kp).unwrap_or_default();
+                    // Tenta ler .elf para extrair entry point
+                    let elf_path = kp.with_extension("elf");
+                    let elf_entry = fs::read(&elf_path).ok().and_then(|e| {
+                        if e.len() > 0x1c && e[0] == 0x7f && e[1] == b'E' {
+                            Some(u32::from_be_bytes([e[0x18], e[0x19], e[0x1a], e[0x1b]]))
+                        } else { None }
+                    }).unwrap_or(0);
+                    (data, if elf_entry >= 0x2000 { elf_entry } else { 0x2000 })
+                }
+                None => (vec![], 0x2000),
             };
-            // Gera PPC bootstrap que pula pra entry do jogo em 0x10000
+// Gera PPC bootstrap que pula pra entry do jogo
             let mut ppc = Vec::new();
             macro_rules! w { ($x:expr) => { ppc.push($x); } }
             w!(i_lwz(3, 0, 0));
             w!(i_cmpi(3, 1));
             w!((16<<26) | (4<<21) | (2<<16) | (0xFFFD & 0x3FFF));
-            w!(i_addis(1,0,0x017F)); // stack @ 0x017F_0000 (24MB unified)
+            w!(i_addis(1,0,0x01BF)); // stack @ 0x01BF_0000 (28MB unified)
             w!(i_ori(1,1,0));
             // struct CD32Platform em 0x0000_FC00
             w!(i_addis(3,0,0x0000));
@@ -375,11 +385,11 @@ fn main() {
             w!(i_addis(4,0,(-0x32CEi16)));
             w!(i_ori(4,4,0x0001));
             w!(i_stw(4,0,3));
-            // total_ram = 24MB
-            w!(i_addis(4,0,0x0180));
+            // total_ram = 28MB
+            w!(i_addis(4,0,0x01C0));
             w!(i_stw(4,4,3));
-            // Jump to game entry (kernel em 0x2000)
-            w!(i_b(0x2000, (0x100 + ppc.len()*4) as u32));
+            // Jump to game entry point
+            w!(i_b(entry, (0x100 + ppc.len()*4) as u32));
 
             rom.words(0x0000, &cf);
             rom.ppc(0x0100, &ppc);
