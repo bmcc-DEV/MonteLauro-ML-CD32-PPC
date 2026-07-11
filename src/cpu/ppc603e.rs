@@ -264,11 +264,21 @@ impl Ppu {
             0b011100 => self.op_andi(insn, bus),   // ANDI.
             0b010101 => self.op_rlwinm(insn, bus), // RLWINM (opcd 21)
             0b010100 => self.op_rlwimi(insn, bus), // RLWIMI (opcd 20)
-            0b100000 => self.op_lwz(insn, bus),    // LWZ
-            0b100001 => self.op_lwzu(insn, bus),   // LWZU
+            0b100000 => self.op_lwz(insn, bus),    // LWZ  (32)
+            0b100001 => self.op_lwzu(insn, bus),   // LWZU (33)
+            0b100010 => self.op_lbz(insn, bus),    // LBZ  (34)
+            0b100011 => self.op_lbzu(insn, bus),   // LBZU (35)
+            0b100110 => self.op_stb(insn, bus),    // STB  (38)
+            0b100111 => self.op_stbu(insn, bus),   // STBU (39)
+            0b101000 => self.op_lhz(insn, bus),    // LHZ  (40)
+            0b101001 => self.op_lhzu(insn, bus),   // LHZU (41)
+            0b101010 => self.op_lha(insn, bus),    // LHA  (42)
+            0b101011 => self.op_lhau(insn, bus),   // LHAU (43)
+            0b101100 => self.op_sth(insn, bus),    // STH  (44)
+            0b101101 => self.op_sthu(insn, bus),   // STHU (45)
             0b011111 => self.op_xform(insn, bus),  // X-form (OPCD=0x1F)
-            0b100100 => self.op_stw(insn, bus),    // STW
-            0b100101 => self.op_stwu(insn, bus),   // STWU
+            0b100100 => self.op_stw(insn, bus),    // STW  (36)
+            0b100101 => self.op_stwu(insn, bus),   // STWU (37)
             0b010000 => {
                 // BC (B-form: BO, BI, BD, AA, LK)
                 let bo = ((insn >> 21) & 0x1F) as u8;
@@ -497,6 +507,103 @@ impl Ppu {
         self.regs.gpr[ra as usize] = ea;
         Ok(1)
     }
+
+    // ── 8-bit loads ─────────────────────────────────────────────────
+
+    fn op_lbz(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = (if ra == 0 { 0 } else { self.regs.gpr[ra as usize] }).wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        self.regs.gpr[rd as usize] = bus.read_byte(addr).ok_or(PpcError::PageFault(ea))? as u32;
+        Ok(1)
+    }
+
+    fn op_lbzu(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = self.regs.gpr[ra as usize].wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        self.regs.gpr[rd as usize] = bus.read_byte(addr).ok_or(PpcError::PageFault(ea))? as u32;
+        self.regs.gpr[ra as usize] = ea;
+        Ok(1)
+    }
+
+    // ── 8-bit stores ────────────────────────────────────────────────
+
+    fn op_stb(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rs, ra, si) = self.dform_op(insn);
+        let ea = (if ra == 0 { 0 } else { self.regs.gpr[ra as usize] }).wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        bus.write_byte(addr, self.regs.gpr[rs as usize] as u8).ok_or(PpcError::PageFault(ea))?;
+        Ok(1)
+    }
+
+    fn op_stbu(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rs, ra, si) = self.dform_op(insn);
+        let ea = self.regs.gpr[ra as usize].wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        bus.write_byte(addr, self.regs.gpr[rs as usize] as u8).ok_or(PpcError::PageFault(ea))?;
+        self.regs.gpr[ra as usize] = ea;
+        Ok(1)
+    }
+
+    // ── 16-bit loads ────────────────────────────────────────────────
+
+    fn op_lhz(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = (if ra == 0 { 0 } else { self.regs.gpr[ra as usize] }).wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        self.regs.gpr[rd as usize] = bus.read_half(addr).ok_or(PpcError::PageFault(ea))? as u32;
+        Ok(1)
+    }
+
+    fn op_lhzu(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = self.regs.gpr[ra as usize].wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        self.regs.gpr[rd as usize] = bus.read_half(addr).ok_or(PpcError::PageFault(ea))? as u32;
+        self.regs.gpr[ra as usize] = ea;
+        Ok(1)
+    }
+
+    fn op_lha(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = (if ra == 0 { 0 } else { self.regs.gpr[ra as usize] }).wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        let val = bus.read_half(addr).ok_or(PpcError::PageFault(ea))?;
+        self.regs.gpr[rd as usize] = val as i16 as i32 as u32;  // sign-extend 16→32
+        Ok(1)
+    }
+
+    fn op_lhau(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let ea = self.regs.gpr[ra as usize].wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        let val = bus.read_half(addr).ok_or(PpcError::PageFault(ea))?;
+        self.regs.gpr[rd as usize] = val as i16 as i32 as u32;
+        self.regs.gpr[ra as usize] = ea;
+        Ok(1)
+    }
+
+    // ── 16-bit stores ───────────────────────────────────────────────
+
+    fn op_sth(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rs, ra, si) = self.dform_op(insn);
+        let ea = (if ra == 0 { 0 } else { self.regs.gpr[ra as usize] }).wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        bus.write_half(addr, self.regs.gpr[rs as usize] as u16).ok_or(PpcError::PageFault(ea))?;
+        Ok(1)
+    }
+
+    fn op_sthu(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rs, ra, si) = self.dform_op(insn);
+        let ea = self.regs.gpr[ra as usize].wrapping_add(si as u32);
+        let addr = self.data_translate(ea, bus)?;
+        bus.write_half(addr, self.regs.gpr[rs as usize] as u16).ok_or(PpcError::PageFault(ea))?;
+        self.regs.gpr[ra as usize] = ea;
+        Ok(1)
+    }
+
+    // ── Indexed loads (X-form) ──────────────────────────────────────
 
     fn op_lwzx(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
         let rd = (insn >> 21) & 0x1F;
