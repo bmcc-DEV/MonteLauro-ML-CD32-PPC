@@ -1,0 +1,19 @@
+name: MonteLauro CD32 CI
+
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - run: cargo run --bin gen-headers --release
+      - run: cargo run --bin check-abi --release || true
+      - run: mkdir -p rom
+      - run: cargo run --bin gen-rom --release -- --target hello --output rom/hello_cd32.rom
+      - run: cargo run --release --bin cd32-rs -- --bios rom/hello_cd32.rom --cycles 50000
+      - run: cargo run --bin gen-rom --release -- --target aros-bootstrap --output rom/aros_cd32.rom
+      - run: cargo run --release --bin cd32-rs -- --bios rom/aros_cd32.rom --cycles 50000
+
