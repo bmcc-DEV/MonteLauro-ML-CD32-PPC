@@ -1,16 +1,16 @@
 /*
- * MonteLauro ML-CD32 Board Support Package
+ * CDG2 CDG2 Board Support Package
  * board.h — Definições canônicas do hardware
  *
  * ABI Version: 1.0
  * Conforme docs/aros/abi.md
  */
-#ifndef ML_CD32_BOARD_H
-#define ML_CD32_BOARD_H
+#ifndef CDG2_BOARD_H
+#define CDG2_BOARD_H
 
 #include <stdint.h>
 
-#define ML_CD32_ABI_VERSION 0x0100
+#define CDG2_ABI_VERSION 0x0100
 
 /* ── Mapa de Memória ────────────────────────────────────────────── */
 
@@ -124,7 +124,7 @@ typedef struct __attribute__((packed)) {
     uint32_t cdrom_base;     /* 0x03000000 */
     uint32_t gpio_base;      /* 0x02200020 */
     uint32_t coldfire_base;  /* 0x02200000 */
-} MLCD32Platform;
+} CDG2Platform;
 
 /* ── Helper functions ─────────────────────────────────────────────── */
 
@@ -145,4 +145,4 @@ static inline uint16_t ml_read_joypad(void) {
     return (uint16_t)ml_mailbox_recv();
 }
 
-#endif /* ML_CD32_BOARD_H */
+#endif /* CDG2_BOARD_H */

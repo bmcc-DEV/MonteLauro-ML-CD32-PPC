@@ -19,8 +19,8 @@ pub struct AudioChannel {
     enabled: bool,
     volume: u16,       // 0..1024
     pan: u8,           // 0..255 (0=esquerda, 255=direita)
-    sample_pos: u32,    // posição atual na waveform (para streaming)
-    loop_enabled: bool,
+    _sample_pos: u32,    // posição atual na waveform (para streaming)
+    _loop_enabled: bool,
 }
 
 impl AudioChannel {
@@ -32,8 +32,8 @@ impl AudioChannel {
             enabled: false,
             volume: 1024,
             pan: 128,
-            sample_pos: 0,
-            loop_enabled: false,
+            _sample_pos: 0,
+            _loop_enabled: false,
         }
     }
 
@@ -57,7 +57,7 @@ pub struct AudioSubsystem {
     output_l: i16,
     output_r: i16,
     dsp_regs: [u32; 64],  // DSP control registers
-    irq_pending: bool,
+    cycle_accum: u32,
 }
 
 impl AudioSubsystem {
@@ -68,14 +68,17 @@ impl AudioSubsystem {
             output_l: 0,
             output_r: 0,
             dsp_regs: [0u8; 64].map(|_| 0u32),
-            irq_pending: false,
+            cycle_accum: 0,
         }
     }
 
-    pub fn tick(&mut self, _cycles: u32) {
-        // A cada 44.1k ciclos do ColdFire, gera uma amostra
-        // (simplificado: ColdFire a 140MHz → ~3175 ciclos por sample)
-        let _sample_clock = 140_000_000 / SAMPLE_RATE;
+    pub fn tick(&mut self, cycles: u32) {
+        self.cycle_accum += cycles;
+        let sample_clock = 140_000_000 / SAMPLE_RATE;
+        if self.cycle_accum < sample_clock {
+            return;
+        }
+        self.cycle_accum -= sample_clock;
 
         // Mixa todos os canais ativos
         let mut mix_l: i32 = 0;

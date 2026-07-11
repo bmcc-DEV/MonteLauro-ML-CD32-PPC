@@ -1,15 +1,15 @@
-# MonteLauro CD32 PPC Cross-Compiler Toolchain (Docker)
+# CDG² PPC Cross-Compiler Toolchain (Docker)
 #
 # Usa gcc-powerpc-linux-gnu do apt (build ~5min, sem compilar GCC do zero).
 # Toolchain: powerpc-linux-gnu-gcc (glibc, suficiente para BSP + kernel).
 #
-# Build:  docker build -t montelauro-toolchain docker/
+# Build:  docker build -t cdg2-toolchain docker/
 # Use:    make docker-kernel  (extrai aros-ppc.bin + gera ROM)
 #         make rom-aros KERNEL=aros-ppc.bin
 
 FROM ubuntu:24.04
 
-LABEL description="MonteLauro CD32 PPC Cross-Compiler (gcc-powerpc)"
+LABEL description="CDG² PPC Cross-Compiler (gcc-powerpc)"
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential automake autoconf libtool \

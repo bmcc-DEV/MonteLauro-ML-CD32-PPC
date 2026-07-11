@@ -23,13 +23,11 @@ pub enum CpuTarget {
 #[derive(Debug, Clone, Copy)]
 struct IrqLine {
     asserted: bool,
-    level: u8,
-    vector: u8,
 }
 
 pub struct InterruptController {
     lines: [IrqLine; 8],
-    routing: [(IrqSource, CpuTarget, u8, u8); 8], // (source, target, level, vector)
+    routing: [(IrqSource, CpuTarget, u8, u8); 7], // (source, target, level, vector)
     pending_ppc: bool,
     pending_cf_level: u8,
     pending_cf_vector: u8,
@@ -38,7 +36,7 @@ pub struct InterruptController {
 impl InterruptController {
     pub fn new() -> Self {
         Self {
-            lines: [IrqLine { asserted: false, level: 0, vector: 0 }; 8],
+            lines: [IrqLine { asserted: false }; 8],
             routing: [
                 (IrqSource::GpuVBlank,   CpuTarget::Ppc,      1, 0x64),
                 (IrqSource::CdromData,   CpuTarget::Ppc,      2, 0x68),
@@ -47,7 +45,6 @@ impl InterruptController {
                 (IrqSource::Timer1,      CpuTarget::Ppc,      3, 0x6C),
                 (IrqSource::DmaDone,     CpuTarget::Ppc,      4, 0x70),
                 (IrqSource::UartRx,      CpuTarget::ColdFire, 4, 0x70),
-                (IrqSource::GpuVBlank,   CpuTarget::ColdFire, 6, 0x78),
             ],
             pending_ppc: false,
             pending_cf_level: 0,
@@ -56,30 +53,20 @@ impl InterruptController {
     }
 
     pub fn assert_irq(&mut self, source: IrqSource) {
-        for (src, _, level, vector) in &self.routing {
+        for (src, _, level, _vector) in &self.routing {
             if *src == source {
                 let idx = *level as usize;
-                self.lines[idx] = IrqLine { asserted: true, level: *level, vector: *vector };
+                self.lines[idx] = IrqLine { asserted: true };
             }
         }
         self.update_pending();
     }
 
     pub fn deassert_irq(&mut self, source: IrqSource) {
-        let mut any_remaining = false;
         for (src, _, level, _) in &self.routing {
             if *src == source {
                 let idx = *level as usize;
                 self.lines[idx].asserted = false;
-            }
-        }
-        // Re-check if any other source shares this level
-        for (src, _, level, _) in &self.routing {
-            if *src != source {
-                let idx = *level as usize;
-                if self.lines[idx].asserted {
-                    any_remaining = true;
-                }
             }
         }
         self.update_pending();
@@ -94,7 +81,7 @@ impl InterruptController {
             if !self.lines[level].asserted {
                 continue;
             }
-            for (src, target, lvl, vec) in &self.routing {
+            for (_, target, lvl, vec) in &self.routing {
                 if *lvl as usize != level { continue; }
                 match target {
                     CpuTarget::Ppc => self.pending_ppc = true,

@@ -100,7 +100,7 @@ pub fn disasm_ppc(insn: u32) -> String {
             let ra = ppc_ra(insn);
             let rb = ppc_rb(insn);
             let rs = ppc_rs(insn);
-            let rc = insn & 1;
+            let _rc = insn & 1;
             match xop {
                 0b0000001000 => format!("subfc  {}, {}, {}", gpr(rd), gpr(ra), gpr(rb)),
                 0b0000100011 => format!("or     {}, {}, {}", gpr(ra), gpr(rs), gpr(rb)),
@@ -148,7 +148,7 @@ fn cf_an(n: u16) -> String { format!("a{}", n & 7) }
 
 fn cf_ea_mode(insn: u16) -> (u16, u16) { ((insn >> 3) & 7, insn & 7) }
 
-fn cf_ea_string(mode: u16, reg: u16, size: u16, ext_word: Option<u16>) -> String {
+fn cf_ea_string(mode: u16, reg: u16, _size: u16, ext_word: Option<u16>) -> String {
     match mode {
         0 => cf_dn(reg),
         1 => cf_an(reg),
@@ -170,24 +170,6 @@ fn cf_ea_string(mode: u16, reg: u16, size: u16, ext_word: Option<u16>) -> String
             _ => "??".into(),
         },
         _ => "??".into(),
-    }
-}
-
-fn cf_size(op: u16) -> &'static str {
-    match (op >> 12) & 0xF {
-        0x1 => ".b",
-        0x3 => ".w",
-        0x2 => ".l",
-        _ => "",
-    }
-}
-
-fn cf_move_size(op: u16) -> &'static str {
-    match (op >> 12) & 0xF {
-        1 => ".b",
-        3 => ".w",
-        2 => ".l",
-        _ => "",
     }
 }
 

@@ -9,3 +9,6 @@ pub mod interrupt;
 pub mod dma;
 pub mod disasm;
 pub mod save;
+
+#[cfg(feature = "sdl-frontend")]
+pub mod sdl_debug;

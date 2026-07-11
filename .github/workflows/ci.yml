@@ -1,4 +1,4 @@
-name: MonteLauro CD32 CI
+name: CDG² CI
 
 on: [push, pull_request]
 

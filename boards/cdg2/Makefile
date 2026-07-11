@@ -1,8 +1,8 @@
-# MonteLauro ML-CD32 Board Support Package
+# MonteLauro CDG2 Board Support Package
 # Makefile para integração com o build system do AROS
 #
 # Uso (dentro da árvore AROS):
-#   make cpu=ppc arch=sam440 board=montelauro-cd32
+#   make cpu=ppc arch=sam440 board=cdg2
 #
 # Ou compile manualmente com:
 #   powerpc-elf-gcc -c -O2 -mcpu=603e -mhard-float -I. \

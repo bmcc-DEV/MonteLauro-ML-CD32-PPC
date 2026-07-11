@@ -8,15 +8,10 @@
 use std::collections::VecDeque;
 
 const SECTOR_SIZE: usize = 2048;
-const CDROM_REGS_SIZE: usize = 0x1000;
 const PVD_LBA: u32 = 16;
 
 fn read_le32(buf: &[u8], off: usize) -> u32 {
     u32::from_le_bytes(buf[off..off+4].try_into().unwrap_or([0;4]))
-}
-
-fn read_be32(buf: &[u8], off: usize) -> u32 {
-    u32::from_be_bytes(buf[off..off+4].try_into().unwrap_or([0;4]))
 }
 
 #[derive(Debug, Clone)]
@@ -159,10 +154,10 @@ impl CdromDrive {
     }
 
     pub fn write_byte(&mut self, addr: u32, val: u8) {
-        if addr & 3 != 0 { return; }
         let idx = ((addr & 0xFFF) >> 2) as usize;
         if idx < 64 {
-            self.regs[idx] = (self.regs[idx] & !0xFF) | val as u32;
+            let shift = (addr & 3) * 8;
+            self.regs[idx] = (self.regs[idx] & !(0xFFu32 << shift)) | ((val as u32) << shift);
             self.handle_reg_write(idx, self.regs[idx]);
         }
     }
@@ -171,7 +166,8 @@ impl CdromDrive {
         if addr & 1 != 0 { return; }
         let idx = ((addr & 0xFFF) >> 2) as usize;
         if idx < 64 {
-            self.regs[idx] = (self.regs[idx] & !0xFFFF) | val as u32;
+            let shift = (addr & 2) * 8;
+            self.regs[idx] = (self.regs[idx] & !(0xFFFFu32 << shift)) | ((val as u32) << shift);
             self.handle_reg_write(idx, self.regs[idx]);
         }
     }

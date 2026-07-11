@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD3² — CD-ROM + ISO9660 + ELF loader
+ * CDG² — CD-ROM + ISO9660 + ELF loader
  *
  * Pipeline completo:
  *   cdrom_init() → mount ISO9660

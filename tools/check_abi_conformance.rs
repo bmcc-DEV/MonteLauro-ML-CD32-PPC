@@ -1,4 +1,4 @@
-//! Validador de conformidade ABI MonteLauro CD3².
+//! Validador de conformidade ABI CDG².
 //!
 //! Verifica offsets da struct CD32Platform entre:
 //!   - src/cd32_abi.rs (gerado)

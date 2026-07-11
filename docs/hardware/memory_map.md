@@ -3,7 +3,7 @@
 ## Visão Geral
 
 O CD³² usa um espaço de endereçamento de 32 bits. A partir da rev C da
-plataforma MonteLauro, **System RAM e Chip RAM foram unificadas** num único
+plataforma CDG2, **System RAM e Chip RAM foram unificadas** num único
 banco de **24MB** acessível por PPC e ColdFire (via MIU).
 
 - **Barramento PPC** (domínio primário, 266MHz)

@@ -1,4 +1,4 @@
-/* MonteLauro CD3² — Linker Script para jogos */
+/* CDG² — Linker Script para jogos */
 OUTPUT_FORMAT(elf32-powerpc)
 OUTPUT_ARCH(powerpc:common)
 ENTRY(game_main)

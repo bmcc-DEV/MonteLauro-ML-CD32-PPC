@@ -4,8 +4,6 @@
 //! Cada canal transfere em bursts de 16 words (64 bytes) por vez.
 //! Gerenciado pela MIU — acessa o barramento como master.
 
-use crate::interrupt::IrqSource;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DmaChannelId {
     Cdrom = 0,
@@ -85,7 +83,7 @@ impl DmaController {
     /// 1. DMA decide quais transferências fazer.
     /// 2. O tick retorna uma lista de transferências pendentes.
     pub fn tick(&mut self) -> Vec<DmaTransfer> {
-        let mut transfers = Vec::new();
+        let mut transfers = Vec::with_capacity(4);
         let order = [DmaChannelId::Cdrom, DmaChannelId::Gpu, DmaChannelId::Audio, DmaChannelId::ColdFire];
 
         for &ch_id in &order {
@@ -96,9 +94,9 @@ impl DmaController {
 
             let ch = &mut self.channels[idx];
             let remaining_in_burst = ch.burst_size - ch.bytes_this_burst;
-            let chunk = remaining_in_burst.min(ch.transfer_size).min(4);
+            let words_in_burst = remaining_in_burst.min(ch.transfer_size) / 4;
 
-            if chunk == 0 {
+            if words_in_burst == 0 {
                 if ch.transfer_size == 0 {
                     ch.state = DmaState::Done;
                     ch.status = (ch.status & !0x01) | 0x02;
@@ -109,17 +107,18 @@ impl DmaController {
                 continue;
             }
 
-            transfers.push(DmaTransfer::Copy {
-                channel: ch_id,
-                src: ch.src_addr,
-                dst: ch.dst_addr,
-                size: chunk,
-            });
-
-            ch.src_addr = ch.src_addr.wrapping_add(4);
-            ch.dst_addr = ch.dst_addr.wrapping_add(4);
-            ch.transfer_size = ch.transfer_size.saturating_sub(4);
-            ch.bytes_this_burst += 4;
+            for _ in 0..words_in_burst {
+                transfers.push(DmaTransfer::Copy {
+                    channel: ch_id,
+                    src: ch.src_addr,
+                    dst: ch.dst_addr,
+                    size: 4,
+                });
+                ch.src_addr = ch.src_addr.wrapping_add(4);
+                ch.dst_addr = ch.dst_addr.wrapping_add(4);
+                ch.transfer_size = ch.transfer_size.saturating_sub(4);
+                ch.bytes_this_burst += 4;
+            }
         }
 
         transfers

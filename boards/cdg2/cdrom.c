@@ -1,5 +1,5 @@
 /*
- * MonteLauro ML-CD32 BSP — cdrom.c
+ * CDG2 CDG2 BSP — cdrom.c
  * Driver de CD-ROM via DMA controller + mailbox ColdFire.
  *
  * O CD-ROM 12x é controlado via registers em 0x0300_0000.

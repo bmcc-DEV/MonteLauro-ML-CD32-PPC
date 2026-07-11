@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD3² — Input (joypad via ColdFire mailbox)
+ * CDG² — Input (joypad via ColdFire mailbox)
  *
  * Lê GPIO do ColdFire no offset 0x20 via mailbox CF_CMD_IO_READ (0x02).
  * GPIO bits: 0=UP, 1=DN, 2=L, 3=R, 4=A, 5=B, 6=START, 7=SEL

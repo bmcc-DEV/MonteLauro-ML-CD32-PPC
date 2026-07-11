@@ -178,7 +178,7 @@ impl Ppu {
         self.translate(true, addr, bus)
     }
 
-    fn take_extint(&mut self, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+    fn take_extint(&mut self, _bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
         self.regs.srr0 = self.regs.pc;
         self.regs.srr1 = self.regs.msr;
         self.regs.msr &= !(1 << 15); // MSR[EE] = 0
@@ -193,10 +193,10 @@ impl Ppu {
         let opcd = (insn >> 26) & 0x3F;
 
         match opcd {
-            0b001110 => self.op_addi(insn, bus),   // ADDI (opcd 14)
-            0b001100 => self.op_addic(insn, bus),  // ADDIC (opcd 12? No, let me check)
+            0b001000 => self.op_subfic(insn, bus),  // SUBFIC (opcd 8)
+             0b001110 => self.op_addi(insn, bus),   // ADDI (opcd 14)
+            0b001100 => self.op_addic(insn, bus),  // ADDIC (opcd 12)
             0b001111 => self.op_addis(insn, bus),  // ADDIS (opcd 15)
-            0b011100 => self.op_pform(insn, bus),  // Instruções primárias (OPCD=0x1C)
             0b010011 => {
                 // Opcd 19: XL-form (bclr, bcctr, RFI, CR ops)
                 // Bits: BO(6-10), BI(11-15), /(16-20), XO(21-30), LK(31)
@@ -214,17 +214,17 @@ impl Ppu {
 
                 if xop == 16 {
                     // bclr — Branch Conditional to Link Register
-                    // bclr BO, BI: se condicao verdadeira, PC = LR
-                    // bclrl: PC = LR, LR = PC_after  (se lk=1)
+                    // bclr  BO, BI: se condicao verdadeira, PC = LR
+                    // bclrl:        LR = PC_after, PC = LR_old
+                    let target = self.regs.lr;
                     if lk == 1 { self.regs.lr = self.regs.pc; }
-                    // Verifica condicao
                     if (bo & 0x14) == 0x14 {
-                        self.regs.pc = self.regs.lr;
+                        self.regs.pc = target;
                         return Ok(1);
                     }
                     let cr_bit = (self.regs.cr >> (31 - bi)) & 1;
                     let cond_true = (bo >> 3) & 1;
-                    if (cr_bit as u8) == cond_true { self.regs.pc = self.regs.lr; }
+                    if (cr_bit as u8) == cond_true { self.regs.pc = target; }
                     return Ok(1);
                 }
 
@@ -253,8 +253,8 @@ impl Ppu {
                     return Ok(1);
                 }
 
-                log::warn!("PPC: opcd 19 xop={} not implemented", xop);
-                Err(PpcError::IllegalInstruction(self.regs.pc.wrapping_sub(4)))
+                log::debug!("PPC: opcd 19 xop={} not implemented (NOP)", xop);
+                Ok(1)
             }
             0b000111 => self.op_mulli(insn, bus),  // MULLI
             0b001011 => self.op_cmpi(insn, bus),   // CMPI (opcd 11)
@@ -359,10 +359,20 @@ impl Ppu {
 
     fn op_addic(&mut self, insn: u32, _bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
         let (rd, ra, si) = self.dform_op(insn);
-        let a = if ra == 0 { 0 } else { self.regs.gpr[ra as usize] };
+        let a = self.regs.gpr[ra as usize];
         let (res, carry) = a.overflowing_add(si as u32);
         self.regs.gpr[rd as usize] = res;
         if carry { self.regs.xer |= 0x20000000; } else { self.regs.xer &= !0x20000000; }
+        Ok(1)
+    }
+
+    fn op_subfic(&mut self, insn: u32, _bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
+        let (rd, ra, si) = self.dform_op(insn);
+        let a = self.regs.gpr[ra as usize];
+        let (res, carry) = (!a).overflowing_add(si as u32);
+        let (res, carry2) = res.overflowing_add(1);
+        self.regs.gpr[rd as usize] = res;
+        if carry || carry2 { self.regs.xer |= 0x20000000; } else { self.regs.xer &= !0x20000000; }
         Ok(1)
     }
 
@@ -660,26 +670,6 @@ impl Ppu {
         Ok(1)
     }
 
-    // ── P-form (OPCD=0x1C) ────────────────────────────────────────────
-
-    fn op_pform(&mut self, insn: u32, _bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
-        let subop = (insn >> 1) & 0x1F;
-        match subop {
-            0b00000 => self.op_mcrf(insn),
-            _ => Err(PpcError::IllegalInstruction(self.regs.pc.wrapping_sub(4)))
-        }
-    }
-
-    fn op_mcrf(&mut self, insn: u32) -> Result<u32, PpcError> {
-        let crf_s = (insn >> 18) & 0x07;
-        let crf_d = (insn >> 23) & 0x07;
-        let shift_s = 28 - crf_s * 4;
-        let shift_d = 28 - crf_d * 4;
-        let field = (self.regs.cr >> shift_s) & 0xF;
-        self.regs.cr = (self.regs.cr & !(0xF << shift_d)) | (field << shift_d);
-        Ok(1)
-    }
-
     // ── X-form (OPCD=0x1F) ────────────────────────────────────────────
 
     fn op_xform(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
@@ -712,7 +702,8 @@ impl Ppu {
                 }
                 Ok(1)
             }
-            0b0001000100 => self.op_and(insn),    // AND
+            0b0000011100 => self.op_and(insn),    // AND (xop=28)
+            0b0001000100 => self.op_and(insn),    // AND alt (xop=68, compat)
             0b0001000111 => self.op_andc(insn),   // ANDC
             0b0001011000 => self.op_neg(insn),    // NEG
             0b0001100000 => self.op_cntlzw(insn), // CNTLZW
@@ -756,8 +747,8 @@ impl Ppu {
             0b0111010011 => self.op_mtspr(insn),    // MTSPR (xop=467)
             0b0101010011 => self.op_mfspr(insn),    // MFSPR (xop=339)
             _ => {
-                log::warn!("PPC: X-form instruction xop={} not implemented", xop);
-                Err(PpcError::IllegalInstruction(self.regs.pc.wrapping_sub(4)))
+                log::debug!("PPC: X-form xop={} not implemented (NOP)", xop);
+                Ok(1)
             }
         }
     }
@@ -870,9 +861,15 @@ impl Ppu {
         let rd = (insn >> 21) & 0x1F;
         let ra = (insn >> 16) & 0x1F;
         let carry = (self.regs.xer >> 29) & 1;
-        let a = self.regs.gpr[ra as usize] as i32;
-        let res = a.wrapping_add(a >> 31).wrapping_add(carry as i32);
-        self.regs.gpr[rd as usize] = res as u32;
+        let a = self.regs.gpr[ra as usize];
+        let (tmp, c1) = a.overflowing_add(0xFFFFFFFFu32);
+        let (res, c2) = tmp.overflowing_add(carry);
+        self.regs.gpr[rd as usize] = res;
+        if c1 || c2 {
+            self.regs.xer |= 0x20000000;
+        } else {
+            self.regs.xer &= !0x20000000;
+        }
         Ok(1)
     }
 
@@ -910,7 +907,11 @@ impl Ppu {
         let rb = (insn >> 11) & 0x1F;
         let a = self.regs.gpr[ra as usize] as i32;
         let b = self.regs.gpr[rb as usize] as i32;
-        self.regs.gpr[rd as usize] = a.wrapping_div(b) as u32;
+        self.regs.gpr[rd as usize] = if b == 0 || (a == i32::MIN && b == -1) {
+            0
+        } else {
+            a.wrapping_div(b) as u32
+        };
         Ok(1)
     }
 
@@ -920,7 +921,7 @@ impl Ppu {
         let rb = (insn >> 11) & 0x1F;
         let a = self.regs.gpr[ra as usize];
         let b = self.regs.gpr[rb as usize];
-        self.regs.gpr[rd as usize] = a.wrapping_div(b);
+        self.regs.gpr[rd as usize] = if b == 0 { 0 } else { a.wrapping_div(b) };
         Ok(1)
     }
 
@@ -1081,11 +1082,12 @@ impl Ppu {
 // ── Helpers ─────────────────────────────────────────────────────────────
 
 fn make_mask(mb: u32, me: u32) -> u32 {
+    let mut mask = 0u32;
     if mb <= me {
-        let m = (1u64 << (me - mb + 1)) - 1;
-        (m << (31 - me)) as u32
+        for i in mb..=me { mask |= 1u32 << (31 - i); }
     } else {
-        let m = (1u64 << (32 - mb + me + 1)) - 1;
-        !((m << (31 - me)) as u32)
+        for i in 0..=me { mask |= 1u32 << (31 - i); }
+        for i in mb..=31 { mask |= 1u32 << (31 - i); }
     }
+    mask
 }

@@ -3,8 +3,6 @@
 //! A MIU gere o acesso à RAM unificada de 24MB e aos periféricos.
 //! O barramento ColdFire roda a 140MHz e o PPC a 266MHz.
 
-use std::sync::atomic::{AtomicU32, Ordering};
-
 use crate::memory::{MemRegion, MemoryMap};
 use crate::gpu::Gpu;
 use crate::audio::AudioSubsystem;
@@ -58,44 +56,35 @@ impl DvdExpansion {
 //   0x30: RTC
 
 struct ColdFireIo {
-    regs: [AtomicU32; 16],
+    regs: [u32; 16],
 }
 
 impl ColdFireIo {
     fn new() -> Self {
-        let mut regs: [AtomicU32; 16] = Default::default();
-        regs[1] = AtomicU32::new(0x000000C0); // UART status: TX ready
-        // GPIO default: all released = all high (active-low)
-        regs[8] = AtomicU32::new(0x0000_FFFF);
+        let mut regs = [0u32; 16];
+        regs[1] = 0x000000C0; // UART status: TX ready
+        regs[8] = 0x0000_FFFF; // GPIO default: all released = all high (active-low)
         Self { regs }
     }
 
     fn read32(&self, offset: u32) -> u32 {
         let idx = (offset >> 2) as usize;
-        if idx < 16 {
-            self.regs[idx].load(Ordering::Relaxed)
-        } else {
-            0
-        }
+        if idx < 16 { self.regs[idx] } else { 0 }
     }
 
     fn write32(&mut self, offset: u32, val: u32) {
         let idx = (offset >> 2) as usize;
-        if idx >= 16 {
-            return;
-        }
+        if idx >= 16 { return; }
         match idx {
             0 => {
                 let byte = val as u8;
                 if (0x20..0x7f).contains(&byte) {
                     log::info!("CF UART: '{}'", byte as char);
                 }
-                self.regs[0].store(val, Ordering::Relaxed);
-                self.regs[1].store(0x000000C0, Ordering::Relaxed);
+                self.regs[0] = val;
+                self.regs[1] = 0x000000C0;
             }
-            _ => {
-                self.regs[idx].store(val, Ordering::Relaxed);
-            }
+            _ => { self.regs[idx] = val; }
         }
     }
 }
@@ -157,10 +146,30 @@ impl Bus {
     }
 
     pub fn tick(&mut self, ppc_cycles: u32, cf_cycles: u32) {
-        // Companion ColdFire: processa mailbox pendente
         self.service_mailbox();
 
+        // Salva estado anterior da GPU
+        let was_idle = self.gpu.state == crate::gpu::tbdr::GpuState::Idle;
         self.gpu.tick(ppc_cycles);
+
+        // Se acabou de entrar em Presenting (kick foi processado),
+        // executa o command buffer da Chip RAM
+        if was_idle && self.gpu.state == crate::gpu::tbdr::GpuState::Presenting {
+            let list_addr = self.gpu.regs[1]; // GPU_LIST_ADDR
+            // Copia comando buffer da sysram antes de pegar vram mutavel
+            let cmd_buf = if list_addr < self.mem.unified_ram().len() as u32 {
+                let end = (list_addr as usize + 8192).min(self.mem.unified_ram().len());
+                self.mem.unified_ram()[list_addr as usize..end].to_vec()
+            } else {
+                Vec::new()
+            };
+            let vram = self.mem.vram_mut();
+            if !cmd_buf.is_empty() {
+                crate::gpu::tbdr::Gpu::exec_dl(&cmd_buf, vram);
+            }
+            self.gpu.tick(ppc_cycles);
+        }
+
         self.audio.tick(cf_cycles);
         self.cdrom.tick(cf_cycles);
 
@@ -277,7 +286,7 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => self.read_mailbox(addr).map(|v| (v & 0xFF) as u8),
             MemRegion::ColdFireIo => {
                 let v = self.cfio.read32(addr & 0x3F);
-                let shift = (addr & 3) << 3;
+                let shift = (3 - (addr & 3)) << 3;
                 Some((v >> shift) as u8)
             }
             MemRegion::DmaRegs => Some((self.dma.read_reg(addr) & 0xFF) as u8),
@@ -285,9 +294,6 @@ impl BusInterface for Bus {
     }
 
     fn read_half(&self, addr: u32) -> Option<u16> {
-        if addr & 1 != 0 {
-            return None;
-        }
         match self.mem.region(addr) {
             MemRegion::UnifiedRam
             | MemRegion::SystemRam
@@ -302,7 +308,7 @@ impl BusInterface for Bus {
             MemRegion::Mailbox => self.read_mailbox(addr).map(|v| (v & 0xFFFF) as u16),
             MemRegion::ColdFireIo => {
                 let v = self.cfio.read32(addr & 0x3F);
-                let shift = (addr & 2) << 3;
+                let shift = (2 - (addr & 2)) << 3;
                 Some((v >> shift) as u16)
             }
             MemRegion::DmaRegs => Some((self.dma.read_reg(addr) & 0xFFFF) as u16),
@@ -311,9 +317,6 @@ impl BusInterface for Bus {
     }
 
     fn read_word(&self, addr: u32) -> Option<u32> {
-        if addr & 3 != 0 {
-            return None;
-        }
         match self.mem.region(addr) {
             MemRegion::UnifiedRam
             | MemRegion::SystemRam
@@ -359,7 +362,7 @@ impl BusInterface for Bus {
             }
             MemRegion::ColdFireIo => {
                 let off = addr & 0x3F;
-                let shift = (off & 3) << 3;
+                let shift = (3 - (off & 3)) << 3;
                 let mask = !(0xFFu32 << shift);
                 let prev = self.cfio.read32(off & !3);
                 self.cfio
@@ -371,9 +374,6 @@ impl BusInterface for Bus {
     }
 
     fn write_half(&mut self, addr: u32, val: u16) -> Option<()> {
-        if addr & 1 != 0 {
-            return None;
-        }
         match self.mem.region(addr) {
             MemRegion::UnifiedRam | MemRegion::SystemRam | MemRegion::ChipRam | MemRegion::Vram => {
                 self.mem.write_half(addr, val)
@@ -400,7 +400,7 @@ impl BusInterface for Bus {
             }
             MemRegion::ColdFireIo => {
                 let off = addr & 0x3F;
-                let shift = (off & 2) << 3;
+                let shift = (2 - (off & 2)) << 3;
                 let mask = !(0xFFFFu32 << shift);
                 let prev = self.cfio.read32(off & !2);
                 self.cfio
@@ -416,9 +416,6 @@ impl BusInterface for Bus {
     }
 
     fn write_word(&mut self, addr: u32, val: u32) -> Option<()> {
-        if addr & 3 != 0 {
-            return None;
-        }
         match self.mem.region(addr) {
             MemRegion::UnifiedRam | MemRegion::SystemRam | MemRegion::ChipRam | MemRegion::Vram => {
                 self.mem.write_word(addr, val)
@@ -528,7 +525,7 @@ impl Bus {
         // Guest normalmente usa word; byte write actualiza low byte.
         let offset = addr & 0x0C;
         let prev = self.read_mailbox(offset).unwrap_or(0);
-        let shift = (addr & 3) << 3;
+        let shift = (3 - (addr & 3)) << 3;
         let merged = (prev & !(0xFFu32 << shift)) | ((val as u32) << shift);
         self.write_mailbox(offset, merged);
     }

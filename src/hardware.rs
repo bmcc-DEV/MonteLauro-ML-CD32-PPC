@@ -23,7 +23,7 @@ pub struct Cd32Hardware {
     pub boot_complete: bool,
     pub serial_out: String,
     cycle_acc: i64,
-    ppc_hold: bool,      // PPC held in reset during ColdFire bootstrap
+    pub ppc_hold: bool,      // PPC held in reset during ColdFire bootstrap
 }
 
 impl Cd32Hardware {

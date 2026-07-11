@@ -1,9 +1,9 @@
 /*
- * MonteLauro ML-CD32 BSP — kernel_cpu.c
+ * CDG2 CDG2 BSP — kernel_cpu.c
  * Inicialização da CPU PPC603e: MMU, BATs, IRQ controller, timer.
  *
  * Chamado pelo kernel AROS durante startup (kernel_init).
- * Recebe struct MLCD32Platform via r3 (conforme abi.md).
+ * Recebe struct CDG2Platform via r3 (conforme abi.md).
  */
 
 #include <exec/types.h>
@@ -13,7 +13,7 @@
 #include "board.h"
 
 /* Ponteiro global para a plataforma — setado em InitBoard */
-const MLCD32Platform *ml_platform = NULL;
+const CDG2Platform *cdg2_platform = NULL;
 
 /* ── Utilitários PPC (inline assembly) ──────────────────────────── */
 
@@ -45,15 +45,15 @@ static inline void mtspr(int spr, uint32_t val) {
  *
  * Chamado pelo kernel AROS assim que o bootloader passa controle.
  * Recebe:
- *   r3 = ponteiro para MLCD32Platform (na Chip RAM)
+ *   r3 = ponteiro para CDG2Platform (na Chip RAM)
  *   r4 = CPUType
  *   r5 = MemSize
  *   r6 = PlatformInfo
  */
 
-void InitBoard(const MLCD32Platform *platform)
+void InitBoard(const CDG2Platform *platform)
 {
-    ml_platform = platform;
+    cdg2_platform = platform;
 
     /* 1. Configura BATs identity mapping (se não configurado pelo boot) */
     /* IBAT0/DBAT0: 0..256MB, Vs=Vp=1, PP=r/w */
@@ -111,11 +111,11 @@ void __attribute__((interrupt)) ml_irq_handler(void)
 
 uint32_t ReadMemSize(void)
 {
-    if (ml_platform) return ml_platform->total_ram;
+    if (cdg2_platform) return cdg2_platform->total_ram;
     return ML_SYSRAM_SIZE + ML_CHIPRAM_SIZE;
 }
 
 uint32_t ReadPlatformInfo(void)
 {
-    return 0x0002;  /* ML-CD32 v1 */
+    return 0x0002;  /* CDG2 v1 */
 }

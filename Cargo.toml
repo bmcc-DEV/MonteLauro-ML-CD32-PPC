@@ -1,9 +1,9 @@
 [package]
-name = "cd32-rs"
+name = "cdg2-rs"
 version = "0.1.0"
 edition = "2021"
-description = "Amiga CD³² community emulator — phantom console preservation project"
-default-run = "cd32-rs"
+description = "CDG² emulator — retro/new console project"
+default-run = "cdg2-rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

@@ -1,4 +1,4 @@
-//! Gera headers C/Rust da ABI MonteLauro CD3².
+//! Gera headers C/Rust da ABI CDG².
 //! Uso: cargo run --bin gen-headers
 
 use std::fs;

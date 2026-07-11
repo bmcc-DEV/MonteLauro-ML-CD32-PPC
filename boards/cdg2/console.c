@@ -1,5 +1,5 @@
 /*
- * MonteLauro ML-CD32 BSP — console.c
+ * CDG2 CDG2 BSP — console.c
  * Driver framebuffer para GPU Lisa II (TBDR).
  *
  * Implementa uma interface mínima de console:
@@ -101,8 +101,8 @@ static int initialized = 0;
 static const char *banner[] = {
     "╔══════════════════════════════════════════════╗",
     "║                                              ║",
-    "║         MonteLauro CD3²  v1.0                ║",
-    "║         Plataforma Aberta ML-CD32-PPC         ║",
+    "║         CDG²  v1.0                ║",
+    "║         Plataforma Aberta CDG2-PPC         ║",
     "║                                              ║",
     "║  PPC603e @ 266MHz  |  ColdFire V4e @ 140MHz  ║",
     "║  GPU Lisa II |  24MB Unified RAM  |  8MB VRAM ║",

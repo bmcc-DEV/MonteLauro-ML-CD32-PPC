@@ -1,12 +1,12 @@
-# MonteLauro CD³²
+# CDG²
 
-**MonteLauro CD³²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
+**CDG²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
 
 Este repositório contém o emulador cycle-accurate, a game runtime (`libcd32.a`),
 o SDK e as ferramentas de build para desenvolvimento de jogos na plataforma
-MonteLauro ML-CD32-PPC.
+CDG².
 
-**Repositório:** [github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC)
+**Repositório:** [github.com/bmcc-DEV/cdg2](https://github.com/bmcc-DEV/cdg2)
 
 **CI:** `make ci` — pipeline completo local, sem dependência externa.
 
@@ -92,7 +92,7 @@ make load
 ### CLI
 
 ```
-Usage: cd32-rs [OPTIONS]
+Usage: cdg2-rs [OPTIONS]
 
 Options:
   -b, --bios <BIOS>        Caminho para a ROM (512KB)
@@ -136,7 +136,7 @@ make clean                    # Limpa artefatos
 ## Estrutura
 
 ```
-MonteLauro-ML-CD32-PPC/
+cdg2/
 ├── Cargo.toml
 ├── Makefile
 ├── LICENSE
@@ -175,7 +175,7 @@ MonteLauro-ML-CD32-PPC/
 │   ├── cd32.h                    # API pública para jogos
 │   └── cd32_platform.h           # Header C da ABI
 │
-├── boards/montelauro-cd32/       # BSP AROS (legacy)
+├── boards/cdg2/       # BSP AROS (legacy)
 ├── docker/
 │   ├── Dockerfile                # Imagem com toolchain PPC
 │   └── entrypoint.sh
@@ -209,7 +209,7 @@ ColdFire
   ▼
 PPC bootstrap
   ├── Spin no handoff
-  ├── Stack pointer (r1 = 0x017F_0000)
+  ├── Stack pointer (r1 = 0x01BF_0000)
   ├── Platform struct em r3
   └── Jump para kernel (0x0000_2000)
   │
@@ -237,5 +237,5 @@ kernel.c:_start()
 
 ## Licença
 
-O código original MonteLauro (emulador, runtime, ferramentas) é MIT.
+O código original do projeto CDG² (emulador, runtime, ferramentas) é MIT.
 Componentes derivados de AROS seguem a AROS Public License (APL).

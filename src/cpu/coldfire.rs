@@ -18,8 +18,8 @@ pub enum CfError {
 
 #[derive(Debug, Clone, Copy)]
 pub enum CfAddressing {
-    DataRegisterDirect(u32),
-    AddressRegisterDirect(u32),
+    DataRegisterDirect { val: u32, idx: usize },
+    AddressRegisterDirect { val: u32, idx: usize },
     AddressRegisterIndirect(u32),
     AddressRegisterPostinc(u32),
     AddressRegisterPredec(u32),
@@ -160,7 +160,7 @@ impl ColdFire {
                     0x59 => self.op_subq_byte(op, bus),
                     0x5A => self.op_addq_byte(op, bus),
                     0x5C => self.op_subq_byte(op, bus),
-                    0x60 => self.op_negx(),
+                    0x60 => self.op_negx(op),
                      0x62 => self.op_clr_byte(op, bus),
                     0x64 => self.op_clr_word(op, bus),
                     0x66 => self.op_clr_long(op, bus),
@@ -302,9 +302,10 @@ impl ColdFire {
 
     fn decode_ea(&mut self, mode: u16, reg: u16, size: u32, bus: &mut dyn BusInterface) -> Result<CfAddressing, CfError> {
         let pc = self.regs.pc;
+        let idx = reg as usize;
         match mode {
-            0 => Ok(CfAddressing::DataRegisterDirect(self.regs.d[reg as usize])),
-            1 => Ok(CfAddressing::AddressRegisterDirect(self.regs.a[reg as usize])),
+            0 => Ok(CfAddressing::DataRegisterDirect { val: self.regs.d[idx], idx }),
+            1 => Ok(CfAddressing::AddressRegisterDirect { val: self.regs.a[idx], idx }),
             2 => Ok(CfAddressing::AddressRegisterIndirect(self.regs.a[reg as usize])),
             3 => {
                 let addr = self.regs.a[reg as usize];
@@ -387,12 +388,12 @@ impl ColdFire {
         bus: &mut dyn BusInterface,
     ) -> Result<u32, CfError> {
         match *ea {
-            CfAddressing::DataRegisterDirect(val) => Ok(match size {
+            CfAddressing::DataRegisterDirect { val, .. } => Ok(match size {
                 1 => val as u8 as u32,
                 2 => val as u16 as u32,
                 _ => val,
             }),
-            CfAddressing::AddressRegisterDirect(val) => Ok(val),
+            CfAddressing::AddressRegisterDirect { val, .. } => Ok(val),
             CfAddressing::AddressRegisterIndirect(addr)
             | CfAddressing::AddressRegisterPostinc(addr)
             | CfAddressing::AddressRegisterPredec(addr)
@@ -418,22 +419,16 @@ impl ColdFire {
         bus: &mut dyn BusInterface,
     ) -> Result<(), CfError> {
         match *ea {
-            CfAddressing::DataRegisterDirect(_) => {
-                let (reg_idx, _) = self.ea_reg_info(ea);
-                if let Some(idx) = reg_idx {
-                    match size {
-                        1 => self.regs.d[idx] = (self.regs.d[idx] & !0xFF) | (val & 0xFF),
-                        2 => self.regs.d[idx] = (self.regs.d[idx] & !0xFFFF) | (val & 0xFFFF),
-                        _ => self.regs.d[idx] = val,
-                    }
+            CfAddressing::DataRegisterDirect { idx, .. } => {
+                match size {
+                    1 => self.regs.d[idx] = (self.regs.d[idx] & !0xFF) | (val & 0xFF),
+                    2 => self.regs.d[idx] = (self.regs.d[idx] & !0xFFFF) | (val & 0xFFFF),
+                    _ => self.regs.d[idx] = val,
                 }
                 Ok(())
             }
-            CfAddressing::AddressRegisterDirect(_) => {
-                let (_, reg_idx) = self.ea_reg_info(ea);
-                if let Some(idx) = reg_idx {
-                    self.regs.a[idx] = val;
-                }
+            CfAddressing::AddressRegisterDirect { idx, .. } => {
+                self.regs.a[idx] = val;
                 Ok(())
             }
             CfAddressing::AddressRegisterIndirect(addr)
@@ -453,18 +448,6 @@ impl ColdFire {
                 log::warn!("ColdFire: write to immediate — ignoring");
                 Ok(())
             }
-        }
-    }
-
-    fn ea_reg_info(&self, ea: &CfAddressing) -> (Option<usize>, Option<usize>) {
-        match *ea {
-            CfAddressing::DataRegisterDirect(v) => {
-                (self.regs.d.iter().position(|&x| x == v), None)
-            }
-            CfAddressing::AddressRegisterDirect(v) => {
-                (None, self.regs.a.iter().position(|&x| x == v))
-            }
-            _ => (None, None),
         }
     }
 
@@ -557,7 +540,7 @@ impl ColdFire {
         let pc = self.regs.pc;
         let opword = bus.read_half(pc.wrapping_sub(2)).unwrap_or(0);
         let disp8 = opword as i8 as i32;
-        let disp16 = bus.read_word(pc).unwrap_or(0) as i16 as i32;
+        let disp16 = bus.read_half(pc).unwrap_or(0) as i16 as i32;
         let cond = ((opword >> 8) & 0x0F) as u8;
 
         if self.get_cc_cond(cond) {
@@ -580,18 +563,6 @@ impl ColdFire {
         if (v as i32) < 0 { *sr |= 0x0008; }      // N
         if carry { *sr |= 0x0001; }               // C
         if overflow { *sr |= 0x0002; }            // V
-    }
-
-    fn add_size(&self, a: u32, b: u32, size: u32) -> (u32, bool, bool) {
-        let mask = match size { 1 => 0xFF, 2 => 0xFFFF, _ => 0xFFFF_FFFF };
-        let sa = (a & mask) as i32;
-        let sb = (b & mask) as i32;
-        let result = a.wrapping_add(b);
-        let carry = (result & mask) < (a & mask);
-        let overflow = if sa >= 0 && sb >= 0 && (result as i32) < 0 { true }
-            else if sa < 0 && sb < 0 && (result as i32) >= 0 { true }
-            else { false };
-        (result, carry, overflow)
     }
 
     // ── Interrupt handling ────────────────────────────────────────────
@@ -1075,9 +1046,8 @@ impl ColdFire {
 
     // ── NEGX ──────────────────────────────────────────────────────────
 
-    fn op_negx(&mut self) -> Result<u32, CfError> {
-        // NEGX Dn (simplified: long only)
-        let dn = 0;
+    fn op_negx(&mut self, op: u16) -> Result<u32, CfError> {
+        let dn = ((op >> 9) & 0x07) as usize;
         let x = ((self.regs.sr >> 4) & 1) as u32;
         let val = self.regs.d[dn];
         let res = (!val).wrapping_add(x);
@@ -1090,9 +1060,8 @@ impl ColdFire {
 
     // ── TAS ───────────────────────────────────────────────────────────
 
-    fn op_tas(&mut self, _op: u16) -> Result<u32, CfError> {
-        // TAS Dn — test and set (simplified)
-        let dn = 0;
+    fn op_tas(&mut self, op: u16) -> Result<u32, CfError> {
+        let dn = ((op >> 9) & 0x07) as usize;
         let val = self.regs.d[dn] as u8;
         self.update_flags(val as u32, 1, false, false);
         self.regs.d[dn] |= 0x80; // set bit 7
@@ -1250,9 +1219,9 @@ impl ColdFire {
 
     // ── SCC ───────────────────────────────────────────────────────────
 
-    fn op_scc(&mut self, _op: u16, _bus: &mut dyn BusInterface) -> Result<u32, CfError> {
-        let dn = 0;
-        let cond = ((_op >> 8) & 0x0F) as u8;
+    fn op_scc(&mut self, op: u16, _bus: &mut dyn BusInterface) -> Result<u32, CfError> {
+        let dn = ((op >> 9) & 0x07) as usize;
+        let cond = ((op >> 8) & 0x0F) as u8;
         if self.get_cc_cond(cond) {
             self.regs.d[dn] = (self.regs.d[dn] & !0xFF) | 0xFF;
         } else {

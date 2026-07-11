@@ -1,4 +1,4 @@
-# MonteLauro CD3² — Game Runtime Makefile
+# CDG² — Game Runtime Makefile
 # Uso: make [CC=powerpc-linux-gnu-gcc] [all|lib|clean]
 
 CC      ?= powerpc-linux-gnu-gcc
@@ -8,7 +8,7 @@ CFLAGS  ?= -O0 -mcpu=603e -mhard-float -ffreestanding -nostdlib \
            -I../include -I.
 LDFLAGS ?= -nostdlib -ffreestanding -Wl,-T,linker.ld -Wl,--build-id=none
 
-OBJS = kernel.o video.o input.o audio.o cdrom.o dma.o string.o
+OBJS = kernel.o video.o input.o audio.o cdrom.o dma.o string.o gfx.o pad.o
 
 all: libcd32.a
 
@@ -24,6 +24,12 @@ demo: libcd32.a demo/demo.c
 	$(CC) $(CFLAGS) $(LDFLAGS) demo/demo.c -L. -lcd32 -o demo.elf
 	powerpc-linux-gnu-objcopy -O binary demo.elf demo.bin
 	@echo "demo.elf + demo.bin built ($(shell wc -c < demo.bin) bytes)"
+
+# Tech demo (com efeitos 3D, plasma, audio)
+tech_demo: libcd32.a demo/tech_demo.c
+	$(CC) $(CFLAGS) $(LDFLAGS) demo/tech_demo.c -L. -lcd32 -o tech_demo.elf
+	powerpc-linux-gnu-objcopy -O binary tech_demo.elf tech_demo.bin
+	@echo "tech_demo.elf + tech_demo.bin built ($(shell wc -c < tech_demo.bin) bytes)"
 
 clean:
 	rm -f *.o *.a *.elf

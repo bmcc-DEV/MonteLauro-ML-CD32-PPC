@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD3² — Vídeo Lisa II (TBDR)
+ * CDG² — Vídeo Lisa II (TBDR)
  * Framebuffer 640x480 RGBA32 com font 8x16 para debug.
  * Sem variaveis globais (usa defines diretos).
  */
@@ -199,4 +199,55 @@ void cd32_printf(const char *fmt, ...)
         }
     }
     cd32_video_kick();
+}
+
+void cd32_gpu_clear(uint32_t color)
+{
+    cd32_video_clear(color);
+}
+
+void cd32_gpu_triangle(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color)
+{
+    color = 0xFF000000 | (color & 0xFFFFFF);
+    int minX = x0, maxX = x0;
+    int minY = y0, maxY = y0;
+    if (x1 < minX) minX = x1; if (x1 > maxX) maxX = x1;
+    if (x2 < minX) minX = x2; if (x2 > maxX) maxX = x2;
+    if (y1 < minY) minY = y1; if (y1 > maxY) maxY = y1;
+    if (y2 < minY) minY = y2; if (y2 > maxY) maxY = y2;
+    if (minX < 0) minX = 0; if (maxX >= CD32_FB_W) maxX = CD32_FB_W - 1;
+    if (minY < 0) minY = 0; if (maxY >= CD32_FB_H) maxY = CD32_FB_H - 1;
+    int sa = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    for (int y = minY; y <= maxY; y++) {
+        for (int x = minX; x <= maxX; x++) {
+            int w0 = (x1 - x0) * (y - y0) - (y1 - y0) * (x - x0);
+            int w1 = (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+            int w2 = (x0 - x2) * (y - y2) - (y0 - y2) * (x - x2);
+            if (sa >= 0) { if (w0 >= 0 && w1 >= 0 && w2 >= 0) cd32_video_putpixel(x, y, color); }
+            else         { if (w0 <= 0 && w1 <= 0 && w2 <= 0) cd32_video_putpixel(x, y, color); }
+        }
+    }
+}
+
+void cd32_gpu_line(int x0, int y0, int x1, int y1, uint32_t color)
+{
+    color = 0xFF000000 | (color & 0xFFFFFF);
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+    int dy = y1 > y0 ? y1 - y0 : y0 - y1;
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx - dy;
+    while (1) {
+        cd32_video_putpixel(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = err * 2;
+        if (e2 > -dy) { err -= dy; x0 += sx; }
+        if (e2 < dx)  { err += dx; y0 += sy; }
+    }
+}
+
+void cd32_gpu_present(void)
+{
+    cd32_video_kick();
+    cd32_video_wait_vblank();
 }

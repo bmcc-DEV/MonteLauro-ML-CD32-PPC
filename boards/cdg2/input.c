@@ -1,5 +1,5 @@
 /*
- * MonteLauro ML-CD32 BSP — input.c
+ * CDG2 CDG2 BSP — input.c
  * Driver de input via ColdFire GPIO (joypad) + mailbox.
  *
  * O estado do joypad é lido do GPIO do ColdFire no offset 0x20.

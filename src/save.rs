@@ -28,14 +28,12 @@ const SEC_PPC_REGS: u8 = 1;
 const SEC_CF_REGS: u8 = 2;
 const SEC_SYSTEM_RAM: u8 = 3;
 const SEC_CHIP_RAM: u8 = 4;
-const SEC_COLDFIRE_LOCAL: u8 = 5;
 const SEC_VRAM: u8 = 6;
 const SEC_GPU: u8 = 7;
 const SEC_AUDIO: u8 = 8;
 const SEC_CDROM: u8 = 9;
 const SEC_DMA: u8 = 10;
 const SEC_BUS: u8 = 11;
-const SEC_BOOTROM: u8 = 12;
 
 // ── Error ────────────────────────────────────────────────────────────
 
@@ -212,6 +210,14 @@ fn load_cdrom(cdrom: &mut CdromDrive, data: &[u8]) -> Result<(), SaveError> {
     for v in &mut cdrom.regs { *v = u32::from_be_bytes(data[off..off+4].try_into().unwrap()); off += 4; }
     cdrom.lba = u32::from_be_bytes(data[off..off+4].try_into().unwrap()); off += 4;
     cdrom.sectors_remaining = u32::from_be_bytes(data[off..off+4].try_into().unwrap()); off += 4;
+    cdrom.state = match data[off] {
+        0 => crate::cdrom::CdromState::NoDisc,
+        1 => crate::cdrom::CdromState::SpinningUp,
+        2 => crate::cdrom::CdromState::Ready,
+        3 => crate::cdrom::CdromState::Reading,
+        4 => crate::cdrom::CdromState::Paused,
+        _ => crate::cdrom::CdromState::NoDisc,
+    };
     cdrom.disc_inserted = data[off+1] != 0;
     Ok(())
 }
