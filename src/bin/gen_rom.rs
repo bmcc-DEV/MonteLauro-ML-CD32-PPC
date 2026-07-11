@@ -106,7 +106,7 @@ fn build_ppc_hello() -> Vec<u32> {
     w!(i_ori(10,10,0));
     w!(i_stw(9,0,10));
     w!(i_lwz(11,0x10,3));
-    w!(i_b(loop_adr, (0x100 + c.len()*4 + 4) as u32));
+    w!(i_b(loop_adr, (0x100 + c.len()*4) as u32));
     c
 }
 
@@ -243,7 +243,7 @@ fn build_ppc_aros() -> Vec<u32> {
 
     // === Fase 6: Jump para kernel AROS ===
     // Kernel em 0x0000_2000 (copiado da ROM pelo ColdFire)
-    w!(i_b(0x2000, (0x100 + c.len()*4 + 4) as u32));
+    w!(i_b(0x2000, (0x100 + c.len()*4) as u32));
 
     c
 }
@@ -381,7 +381,7 @@ fn main() {
             w!(i_ori(4,4,0xFFF8));
             w!(i_stw(4,4,3));
             // Jump to game entry (kernel em 0x2000)
-            w!(i_b(0x2000, (0x100 + ppc.len()*4 + 4) as u32));
+            w!(i_b(0x2000, (0x100 + ppc.len()*4) as u32));
 
             rom.words(0x0000, &cf);
             rom.ppc(0x0100, &ppc);
