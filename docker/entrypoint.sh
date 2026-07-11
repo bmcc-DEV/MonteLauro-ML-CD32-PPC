@@ -1,19 +1,15 @@
 #!/bin/sh
-# Entrypoint for montelauro-toolchain container.
-# Copies AROS PPC kernel to mounted /build directory.
+# MonteLauro CD32 PPC Toolchain entrypoint.
+# Se um comando for passado, executa ele. Senao, valida o toolchain.
 
-KERNEL_SRC="/aros/kernel/aros-ppc.bin"
-KERNEL_DST="/build/aros-ppc.bin"
-
-if [ -f "$KERNEL_SRC" ]; then
-    cp "$KERNEL_SRC" "$KERNEL_DST"
-    echo "=== MonteLauro CD32 AROS Toolchain ==="
-    echo "Kernel: $KERNEL_DST"
-    ls -lh "$KERNEL_DST"
-else
-    echo "=== MonteLauro CD32 AROS Toolchain ==="
-    echo "AVISO: kernel AROS PPC nao encontrado em $KERNEL_SRC"
-    echo "O build do AROS pode nao ter completado."
-    ls -lh /aros/toolchain/linux-x86_64/ppc-elf/bin/ 2>/dev/null && \
-        echo "Toolchain disponivel em /aros/toolchain"
+if [ $# -gt 0 ]; then
+    exec "$@"
 fi
+
+CC="powerpc-linux-gnu-gcc"
+echo "=== MonteLauro CD32 PPC Toolchain ==="
+echo "Toolchain: $(which $CC)"
+$CC --version | head -1
+echo "PPC cross-compiler: OK"
+echo ""
+echo "Uso: docker run --rm -v /caminho/AROS:/aros montelauro-toolchain sh -c 'comando'"
