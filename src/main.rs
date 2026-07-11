@@ -5,7 +5,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use cdg2_rs::hardware::Cd32Hardware;
+use ml_gd2_rs::hardware::Cd32Hardware;
 
 // CD³² Joypad bit positions (lido pelo ColdFire via GPIO 0x0220_0020)
 #[cfg(feature = "sdl-frontend")]
@@ -26,7 +26,7 @@ const JOY_START: u16 = 1 << 6;
 const JOY_SELECT: u16 = 1 << 7;
 
 #[derive(Parser)]
-#[command(name = "cdg2-rs", version, about = "CDG² Emulator")]
+#[command(name = "ml-gd2-rs", version, about = "MonteLauro CD+G² Emulator")]
 struct Cli {
     /// Caminho para o dump da Kickstart ROM (512KB)
     #[arg(short = 'b', long = "bios", default_value = "kickstart.rom")]
@@ -96,7 +96,7 @@ fn main() {
 
     // Load state (se fornecido, pula boot)
     if let Some(load_path) = &cli.load_state {
-        match cdg2_rs::save::load_state(&mut hw, load_path) {
+        match ml_gd2_rs::save::load_state(&mut hw, load_path) {
             Ok(_) => log::info!("State loaded, skipping boot"),
             Err(e) => log::error!("Failed to load state: {}", e),
         }
@@ -124,7 +124,7 @@ fn main() {
 
     // Save state
     if let Some(save_path) = &cli.save_state {
-        match cdg2_rs::save::save_state(&hw, save_path) {
+        match ml_gd2_rs::save::save_state(&hw, save_path) {
             Ok(_) => log::info!("State saved to {}", save_path.display()),
             Err(e) => log::error!("Failed to save state: {}", e),
         }
@@ -178,7 +178,7 @@ fn run_sdl_frontend(mut hw: Cd32Hardware) {
     use sdl2::pixels::PixelFormatEnum;
     use std::time::Duration;
 
-    use cdg2_rs::sdl_debug::{SdlLogger, render_debug_window, render_log_window, capture_log};
+    use ml_gd2_rs::sdl_debug::{SdlLogger, render_debug_window, render_log_window, capture_log};
 
     log::set_boxed_logger(Box::new(SdlLogger))
         .expect("SdlLogger already set (try sem --sdl primeiro)");

@@ -1,5 +1,5 @@
 /*
- * CDG² — Game Runtime API (libcd32)
+ * MonteLauro CD+G² — Game Runtime API (libcd32)
  * 
  * Header público para desenvolvimento de jogos.
  * Consulte sdk/api.md para documentação completa.

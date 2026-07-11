@@ -1,5 +1,5 @@
 #!/bin/sh
-# build-aros.sh — Obtem o kernel AROS PPC para CDG²
+# build-aros.sh — Obtem o kernel AROS PPC para MonteLauro CD+G²
 #
 # Tenta, em ordem:
 #   1. Usar kernel ja compilado em /tmp/AROS (build anterior)
@@ -12,7 +12,7 @@ set -e
 
 KERNEL_DST="aros-ppc.bin"
 
-echo "=== CDG² — AROS PPC Kernel ==="
+echo "=== MonteLauro CD+G² — AROS PPC Kernel ==="
 
 # ── Opcao 1: Kernel ja compilado local ─────────────────────────────
 if [ -f "/tmp/AROS/build/ppc/bin/sam440-ppc/aros-ppc.bin" ]; then
@@ -51,7 +51,7 @@ echo "Buildando imagem Docker..."
 make docker-build
 
 echo "Configurando AROS..."
-docker run --rm -v "$AROS:/aros" cdg2-toolchain sh -c "
+docker run --rm -v "$AROS:/aros" ml-gd2-toolchain sh -c "
     rm -rf /aros/build/ppc 2>/dev/null
     mkdir -p /aros/build/ppc
     cd /aros/build/ppc
@@ -60,7 +60,7 @@ docker run --rm -v "$AROS:/aros" cdg2-toolchain sh -c "
 
 echo "Buildando (make -j2)..."
 echo "  Log: tail -f /tmp/aros-build.log"
-docker run --rm -v "$AROS:/aros" -m 8g cdg2-toolchain \
+docker run --rm -v "$AROS:/aros" -m 8g ml-gd2-toolchain \
     sh -c "cd /aros/build/ppc && make -j2" > /tmp/aros-build.log 2>&1 &
 
 echo "Build em background (PID $!)"

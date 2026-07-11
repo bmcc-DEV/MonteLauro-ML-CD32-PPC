@@ -1,90 +1,51 @@
-# CD3² Memory Map (v0.3 — RAM unificada 24MB)
+# MonteLauro CD+G² Memory Map (v0.4 — RAM unificada 28MB)
 
 ## Visão Geral
 
-O CD³² usa um espaço de endereçamento de 32 bits. A partir da rev C da
-plataforma CDG2, **System RAM e Chip RAM foram unificadas** num único
-banco de **24MB** acessível por PPC e ColdFire (via MIU).
+O MonteLauro CD+G² (ML GD²) usa um espaço de endereçamento de 32 bits. 
+A partir da v0.4, **System RAM e Chip RAM foram unificadas** num único 
+banco de **28MB** acessível por PPC e ColdFire (via MIU).
 
 - **Barramento PPC** (domínio primário, 266MHz)
 - **Barramento ColdFire** (domínio legado, 140MHz)
-- **VRAM** (acessível via GPU/bus, 8MB)
 
-A arbitragem entre PPC e ColdFire é feita pelo **Memory Interface Unit (MIU)**.
+## Map
 
-```
-0x0000_0000 ┌─────────────────────────────────────────────┐
-            │  Unified RAM (24MB)                         │  PPC + ColdFire
-            │  Acesso PPC: 0 wait-states                  │
-            │  Acesso ColdFire: 1 wait-state (via MIU)    │
-            │  Contém: kernel, apps, audio buffers,       │
-            │  primitive lists, stack (topo − 64KB)       │
-0x0100_0000 ├─ overlay ───────────────────────────────────┤
-            │  Mailbox PPC↔ColdFire (16 bytes MMIO)       │  overlay na RAM
-0x0100_0010 │  … continua Unified RAM …                   │
-0x017F_FFFF └─────────────────────────────────────────────┘
-0x0200_0000 ┌─────────────────────────────────────────────┐
-            │  ColdFire Local Memory (2MB)                │  Domínio CF
-            │  Kickstart shadow / I/O scratch             │
-0x0220_0000 ├─────────────────────────────────────────────┤
-            │  I/O Registers — ColdFire Peripherals        │
-            │  0x0220_0000: UART (debug)                   │
-            │  0x0220_0010: SPI (CDROM controle)           │
-            │  0x0220_0020: GPIO / Joyports (active-low)   │
-            │  0x0220_0030: RTC                            │
-0x0300_0000 ├─────────────────────────────────────────────┤
-            │  CDROM Register Block                        │
-0x03D0_0000 ├─────────────────────────────────────────────┤
-            │  Audio DSP                                   │
-0x03E0_0000 ├─────────────────────────────────────────────┤
-            │  DMA Controller (4 canais)                   │
-0x0400_0000 ├─────────────────────────────────────────────┤
-            │  GPU Register File (64KB)                    │
-0x0401_0000 ├─────────────────────────────────────────────┤
-            │  VRAM (8MB) — framebuffer único (guest=SDL)  │
-0x0481_0000 ├─────────────────────────────────────────────┤
-            │  DVD Expansion Slot (opcional)               │
-0x0500_0000 ├─────────────────────────────────────────────┤
-            │  MIU Regs                                    │
-0xFF00_0000 ├─────────────────────────────────────────────┤
-            │  Boot ROM / Kickstart (512KB, read-only)     │
-0xFF08_0000 └─────────────────────────────────────────────┘
-```
+| Endereço | Região | Tamanho | Acesso |
+|----------|--------|---------|--------|
+| 0x0000_0000 | Unified RAM | 28 MB | PPC + CF |
+| 0x0100_0000 | Mailbox (overlay) | 16 B | PPC + CF |
+| 0x0200_0000 | ColdFire Local | 2 MB | CF |
+| 0x0220_0000 | ColdFire I/O | — | CF |
+| 0x0300_0000 | CDROM | — | PPC + CF |
+| 0x03D0_0000 | Audio DSP | — | PPC |
+| 0x03E0_0000 | DMA | — | PPC + CF |
+| 0x0400_0000 | GPU Regs | 64 KB | PPC |
+| 0x0500_0000 | MIU | — | PPC |
+| 0xFF00_0000 | Boot ROM | 512 KB | CF |
 
-## Layout de software na Unified RAM
+## Organização da Unified RAM
 
-| Região | Endereço | Uso |
-|--------|----------|-----|
-| Handoff | 0x0000_0000 | assinatura ColdFire→PPC |
-| PPC bootstrap | 0x0000_0100 | copiado da ROM |
-| Kernel / jogo | 0x0000_2000+ | runtime + ELF |
-| Platform struct | 0x0000_FC00 | `CD32Platform` |
-| Mailbox | 0x0100_0000 | 16 bytes MMIO |
-| Stack (default) | 0x017F_0000 | r1 no boot |
+| Intervalo | Finalidade |
+|-----------|------------|
+| 0x0000_0000 – 0x01AFFFFF | RAM geral (~26 MB) |
+| 0x01B0_0000 – 0x01BFFFFF | Framebuffer / Texturas (1 MB) |
+| 0x01C0_0000 – 0x01FFFFFF | Reservado (~3 MB) |
 
-## MIU (Memory Interface Unit)
+## Memory-Mapped I/O (visão PPC)
 
-| Offset | Nome | Descrição |
-|--------|------|-----------|
-| 0x0000 | MIU_CFG | Config: endianness swap, cache coherency mode |
-| 0x0004 | MIU_STAT | Status: barramento ocupado, erro de alinhamento |
-| 0x0008 | MIU_ARB | Prioridade de arbitragem |
-| 0x000C | MIU_TIMING | Wait-state override (debug) |
-
-## DMA Channels
-
-1. **CDROM → RAM**
-2. **RAM → GPU**
-3. **RAM → Audio FIFO**
-4. **ColdFire ↔ RAM**
-
-Prioridade fixa: CDROM > GPU > Audio > ColdFire.
+| Base | Tamanho | Descrição |
+|------|---------|-----------|
+| 0x0100_0000 | 16 B | Mailbox PPC↔ColdFire |
+| 0x0220_0020 | 64 B | GPIO (joypad, etc) |
+| 0x0300_0000 | 1 MB | CD-ROM controller |
+| 0x03D0_0000 | 256 B | Audio DSP registers |
+| 0x03E0_0000 | 64 B | DMA controller (4 canais × 16B) |
+| 0x0400_0000 | 64 KB | GPU register file |
+| 0x0500_0000 | 16 B | Memory Interface Unit |
 
 ## Notas
 
-- **v0.2** usava 16MB SysRAM + 4MB Chip RAM (20MB). Unificação em 24MB remove a
-  contenção artificial e simplifica o memory map para homebrew.
-- Campos ABI `chip_ram_*` / `sys_ram_*` permanecem por compatibilidade e
-  apontam ambos para a RAM unificada (base 0, size 24MB).
-- A VRAM é um buffer único: o guest escreve em `0x0401_0000` e o frontend SDL
-  lê o mesmo conteúdo (sem cópia GPU fantasma).
+- O framebuffer começa em 0x01B0_0000 por padrão (`CD32_VRAM_BASE`)
+- Stack pointer default: 0x01BF_0000 (64KB abaixo do topo da RAM)
+- Boot ROM é endereçável apenas pelo ColdFire no reset; PPC acessa após MMU init

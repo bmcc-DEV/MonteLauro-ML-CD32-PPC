@@ -1,4 +1,4 @@
-# CDG² — Makefile de Desenvolvimento
+# MonteLauro CD+G² — Makefile de Desenvolvimento
 
 CARGO    ?= cargo
 ROM      ?= rom/game_cd32.rom
@@ -63,10 +63,10 @@ sdl-game: build-sdl rom-game
 # ── Docker Toolchain ──────────────────────────────────────────────────
 
 docker-build:
-	$(DOCKER) build -t cdg2-toolchain docker/
+	$(DOCKER) build -t ml-gd2-toolchain docker/
 
 docker-kernel: docker-build
-	$(DOCKER) run --rm -v $(PWD):/build cdg2-toolchain sh -c \
+	$(DOCKER) run --rm -v $(PWD):/build ml-gd2-toolchain sh -c \
 		"cd /build/kernel && make clean && make demo CC=powerpc-linux-gnu-gcc"
 	cargo run --bin gen-rom --release -- --target game \
 		--kernel kernel/demo.bin --output rom/game_cd32.rom

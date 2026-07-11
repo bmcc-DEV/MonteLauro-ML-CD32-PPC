@@ -1,4 +1,4 @@
-# CDG² — Game Runtime Makefile
+# MonteLauro CD+G² — Game Runtime Makefile
 # Uso: make [CC=powerpc-linux-gnu-gcc] [all|lib|clean]
 
 CC      ?= powerpc-linux-gnu-gcc

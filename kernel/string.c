@@ -1,5 +1,5 @@
 /*
- * CDG² — string.h stubs (memset, memcpy)
+ * MonteLauro CD+G² — string.h stubs (memset, memcpy)
  * Necessarios para o compilador quando -nostdlib.
  */
 

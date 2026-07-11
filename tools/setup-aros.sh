@@ -1,5 +1,5 @@
 #!/bin/sh
-# setup-aros.sh — Integra o BSP CDG2 na árvore AROS
+# setup-aros.sh — Integra o BSP ML GD² na árvore AROS
 # Uso: AROS=/caminho/para/AROS ./tools/setup-aros.sh
 
 set -e
@@ -10,11 +10,11 @@ if [ -z "$AROS" ]; then
     exit 1
 fi
 
-BOARD_DIR="$AROS/rom/boards/cdg2"
-BOARD_MAKE="$AROS/boards/cdg2"
-BSP_SRC="boards/cdg2"
+BOARD_DIR="$AROS/rom/boards/ml-gd2"
+BOARD_MAKE="$AROS/boards/ml-gd2"
+BSP_SRC="boards/ml-gd2"
 
-echo "==> Integrando BSP CDG² em $AROS"
+echo "==> Integrando BSP MonteLauro CD+G² em $AROS"
 
 # 1. Copiar BSP
 mkdir -p "$BOARD_DIR"
@@ -24,24 +24,24 @@ echo "  BSP copiado para $BOARD_DIR"
 # 2. Criar board config
 mkdir -p "$BOARD_MAKE"
 cat > "$BOARD_MAKE/makefile" << 'MAKEEOF'
-# CDG2 CDG2 board config para AROS
+# MonteLauro CD+G² (ML GD²) board config para AROS
 CPU = ppc
 ARCH = sam440
-BOARD = cdg2
+BOARD = ml-gd2
 MAKEEOF
 echo "  Board config criado em $BOARD_MAKE/makefile"
 
 # 3. Patch kernel_startup.cpp
 KSTARTUP="$AROS/rom/ppc/kernel_startup.cpp"
 if [ -f "$KSTARTUP" ]; then
-    if ! grep -q "cdg2" "$KSTARTUP" 2>/dev/null; then
+    if ! grep -q "ml-gd2" "$KSTARTUP" 2>/dev/null; then
         echo "  ATENCAO: Patch manual necessario em $KSTARTUP"
         echo "    Adicione ao inicio de kernel_init():"
-        echo '    #include "boards/cdg2/board.h"'
+        echo '    #include "boards/ml-gd2/board.h"'
         echo '    extern void InitBoard(const CDG2Platform *);'
         echo '    InitBoard((const CDG2Platform *)r3);'
     else
-        echo "  kernel_startup.cpp ja contem referencia ao CDG2"
+        echo "  kernel_startup.cpp ja contem referencia ao ML GD²"
     fi
 else
     echo "  AVISO: $KSTARTUP nao encontrado. Patch manual necessario."
@@ -73,5 +73,5 @@ fi
 
 echo ""
 echo "==> Setup completo!"
-echo "Para compilar: make -C $AROS cpu=ppc board=cdg2"
+echo "Para compilar: make -C $AROS cpu=ppc board=ml-gd2"
 echo "Para testar no emulador: make rom-aros KERNEL=$AROS/bin/ppc/aros-ppc.bin"

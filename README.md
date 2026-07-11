@@ -1,12 +1,12 @@
-# CDG²
+# MonteLauro CD+G²
 
-**CDG²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
+**MonteLauro CD+G²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
 
-Este repositório contém o emulador cycle-accurate, a game runtime (`libcd32.a`),
+Este repositório contém o emulador cycle-accurate, a game runtime (`libml-gd2.a`),
 o SDK e as ferramentas de build para desenvolvimento de jogos na plataforma
-CDG².
+MonteLauro CD+G² (apelido: **ML GD²**).
 
-**Repositório:** [github.com/bmcc-DEV/cdg2](https://github.com/bmcc-DEV/cdg2)
+**Repositório:** [github.com/bmcc-DEV/ml-gd2](https://github.com/bmcc-DEV/ml-gd2)
 
 **CI:** `make ci` — pipeline completo local, sem dependência externa.
 
@@ -92,7 +92,7 @@ make load
 ### CLI
 
 ```
-Usage: cdg2-rs [OPTIONS]
+Usage: ml-gd2-rs [OPTIONS]
 
 Options:
   -b, --bios <BIOS>        Caminho para a ROM (512KB)
@@ -136,7 +136,7 @@ make clean                    # Limpa artefatos
 ## Estrutura
 
 ```
-cdg2/
+ml-gd2/
 ├── Cargo.toml
 ├── Makefile
 ├── LICENSE
@@ -175,7 +175,7 @@ cdg2/
 │   ├── cd32.h                    # API pública para jogos
 │   └── cd32_platform.h           # Header C da ABI
 │
-├── boards/cdg2/       # BSP AROS (legacy)
+├── boards/ml-gd2/       # BSP AROS (legacy)
 ├── docker/
 │   ├── Dockerfile                # Imagem com toolchain PPC
 │   └── entrypoint.sh
@@ -237,5 +237,5 @@ kernel.c:_start()
 
 ## Licença
 
-O código original do projeto CDG² (emulador, runtime, ferramentas) é MIT.
+O código original do projeto MonteLauro CD+G² (emulador, runtime, ferramentas) é MIT.
 Componentes derivados de AROS seguem a AROS Public License (APL).

@@ -1,5 +1,5 @@
 /*
- * CDG² — Demo minimo de jogo
+ * MonteLauro CD+G² — Demo minimo de jogo
  *
  * Compilar: make demo
  * Executar no emulador: --bios rom/game_cd32.rom --disc rom/jogo.iso

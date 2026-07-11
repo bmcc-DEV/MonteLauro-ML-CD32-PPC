@@ -1,5 +1,5 @@
 /*
- * CDG² — DMA (transferencias entre RAM e perifericos)
+ * MonteLauro CD+G² — DMA (transferencias entre RAM e perifericos)
  *
  * 4 canais: 0=CDROM, 1=GPU, 2=Audio, 3=ColdFire
  */

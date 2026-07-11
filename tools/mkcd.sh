@@ -1,5 +1,5 @@
 #!/bin/sh
-# mkcd.sh — CDG² ISO Mastering Tool
+# mkcd.sh — MonteLauro CD+G² ISO Mastering Tool
 #
 # Empacota um jogo (.elf) em imagem ISO9660 jogável no emulador.
 #
@@ -11,7 +11,7 @@ ELF="${1:-kernel/demo.elf}"
 OUT="${2:-rom/jogo.iso}"
 TMP=$(mktemp -d)
 
-echo "=== CDG² — ISO Mastering ==="
+echo "=== MonteLauro CD+G² — ISO Mastering ==="
 echo "Jogo:  $ELF"
 echo "ISO:   $OUT"
 
@@ -32,7 +32,7 @@ mkisofs -o "$OUT" \
     -R \
     -sysid "CD32" \
     -volset "MONTELAURO CD32" \
-    -publisher "CDG² Labs" \
+    -publisher "MonteLauro CD+G² Labs" \
     -quiet \
     "$TMP/cd" 2>&1
 

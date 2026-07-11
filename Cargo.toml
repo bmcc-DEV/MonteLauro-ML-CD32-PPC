@@ -1,9 +1,9 @@
 [package]
-name = "cdg2-rs"
+name = "ml-gd2-rs"
 version = "0.1.0"
 edition = "2021"
-description = "CDG² emulator — retro/new console project"
-default-run = "cdg2-rs"
+description = "MonteLauro CD+G² emulator — retro/new console project"
+default-run = "ml-gd2-rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
