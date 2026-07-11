@@ -4,7 +4,6 @@
  */
 
 #include <stdarg.h>
-#include <stdio.h>
 #include "cd32.h"
 
 static uint8_t * const fb = (uint8_t*)CD32_VRAM_BASE;
@@ -100,12 +99,80 @@ static const uint8_t font[128][16] = {
 static int cx = 0, cy = 0;
 static uint32_t fg = 0xFFFFFFFF;
 
+/* ── Minimal vsnprintf (bare-metal, sem libc) ───────────────────── */
+static int cd32_vsnprintf(char *buf, int size, const char *fmt, va_list ap)
+{
+    int pos = 0;
+    char tmp[32];
+
+    for (int i = 0; fmt[i] && pos < size - 1; i++) {
+        if (fmt[i] != '%') { buf[pos++] = fmt[i]; continue; }
+        i++;
+        int pad_zero = 0, width = 0;
+        if (fmt[i] == '0') { pad_zero = 1; i++; }
+        while (fmt[i] >= '0' && fmt[i] <= '9') width = width*10 + (fmt[i++]-'0');
+
+        switch (fmt[i]) {
+        case 'd': {
+            int val = va_arg(ap, int);
+            int neg = 0;
+            if (val < 0) { neg = 1; val = -val; }
+            int tpos = 0;
+            if (val == 0) tmp[tpos++] = '0';
+            while (val > 0) { tmp[tpos++] = '0' + (val % 10); val /= 10; }
+            int len = tpos + neg;
+            if (neg) tmp[tpos++] = '-';
+            for (int p = 0; pos < size-1 && p < (width > len ? width - len : 0); p++)
+                buf[pos++] = pad_zero ? '0' : ' ';
+            for (int p = tpos-1; p >= 0 && pos < size-1; p--) buf[pos++] = tmp[p];
+            break;
+        }
+        case 'u': {
+            unsigned int val = va_arg(ap, unsigned int);
+            int tpos = 0;
+            if (val == 0) tmp[tpos++] = '0';
+            while (val > 0) { tmp[tpos++] = '0' + (val % 10); val /= 10; }
+            for (int p = width - tpos; p > 0 && pos < size-1; p--) buf[pos++] = ' ';
+            for (int p = tpos-1; p >= 0 && pos < size-1; p--) buf[pos++] = tmp[p];
+            break;
+        }
+        case 'x':
+        case 'X': {
+            unsigned int val = va_arg(ap, unsigned int);
+            int tpos = 0;
+            if (val == 0) tmp[tpos++] = '0';
+            while (val > 0) { int d = val % 16; tmp[tpos++] = d < 10 ? '0'+d : (fmt[i]=='X'?'A':'a')+d-10; val /= 16; }
+            if (width == 0 && tpos == 1 && tmp[0] == '0') width = 1; /* force at least 1 */
+            for (int p = (width > tpos ? width - tpos : 0); p > 0 && pos < size-1; p--) buf[pos++] = pad_zero ? '0' : ' ';
+            for (int p = tpos-1; p >= 0 && pos < size-1; p--) buf[pos++] = tmp[p];
+            break;
+        }
+        case 's': {
+            const char *s = va_arg(ap, const char*);
+            if (!s) s = "(null)";
+            while (*s && pos < size-1) buf[pos++] = *s++;
+            break;
+        }
+        case 'c':
+            buf[pos++] = (char)va_arg(ap, int);
+            break;
+        case '%':
+            buf[pos++] = '%';
+            break;
+        default:
+            buf[pos++] = '%'; buf[pos++] = fmt[i]; break;
+        }
+    }
+    buf[pos] = '\0';
+    return pos;
+}
+
 void cd32_printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     char buf[256];
-    vsnprintf(buf, sizeof(buf), fmt, args);
+    cd32_vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
     for (char *p = buf; *p; p++) {
