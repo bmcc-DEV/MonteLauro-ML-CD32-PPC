@@ -198,16 +198,63 @@ impl Ppu {
             0b001111 => self.op_addis(insn, bus),  // ADDIS (opcd 15)
             0b011100 => self.op_pform(insn, bus),  // Instruções primárias (OPCD=0x1C)
             0b010011 => {
-                // Opcd 19: branches (B-form) + CR ops + RFI (XL-form)
+                // Opcd 19: XL-form (bclr, bcctr, RFI, CR ops)
+                // Bits: BO(6-10), BI(11-15), /(16-20), XO(21-30), LK(31)
+                let bo = ((insn >> 21) & 0x1F) as u8;
+                let bi = ((insn >> 16) & 0x1F) as u8;
                 let xop = (insn >> 1) & 0x3FF;
+                let lk = insn & 1;
+
                 if xop == 50 {
-                    // RFI (Return From Interrupt)
+                    // RFI
                     self.regs.msr = self.regs.srr1;
                     self.regs.pc = self.regs.srr0;
-                    Ok(1)
-                } else {
-                    self.op_bform(insn, bus)
+                    return Ok(1);
                 }
+
+                if xop == 16 {
+                    // bclr — Branch Conditional to Link Register
+                    // bclr BO, BI: se condicao verdadeira, PC = LR
+                    // bclrl: PC = LR, LR = PC_after  (se lk=1)
+                    if lk == 1 { self.regs.lr = self.regs.pc; }
+                    // Verifica condicao
+                    if (bo & 0x14) == 0x14 {
+                        self.regs.pc = self.regs.lr;
+                        return Ok(1);
+                    }
+                    let cr_bit = (self.regs.cr >> (31 - bi)) & 1;
+                    let cond_true = (bo >> 3) & 1;
+                    if (cr_bit as u8) == cond_true { self.regs.pc = self.regs.lr; }
+                    return Ok(1);
+                }
+
+                if xop == 528 {
+                    // bcctr — Branch Conditional to Count Register
+                    if lk == 1 { self.regs.lr = self.regs.pc; }
+                    if (bo & 0x14) == 0x14 {
+                        self.regs.pc = self.regs.ctr & !3;
+                        return Ok(1);
+                    }
+                    let cr_bit = (self.regs.cr >> (31 - bi)) & 1;
+                    let cond_true = (bo >> 3) & 1;
+                    if (cr_bit as u8) == cond_true { self.regs.pc = self.regs.ctr & !3; }
+                    return Ok(1);
+                }
+
+                // CR ops: mcrf (xop=0), crclr (xop=33), crset (xop=289)
+                if xop == 0 {
+                    // mcrf crfD, crfS — Move CR Field
+                    let crd = (insn >> 21) & 0x1F;  // bits 6-10, shift 21
+                    let crs = (insn >> 16) & 0x1F;  // bits 11-15, shift 16
+                    let shift_d = 28 - (crd & 7) * 4;
+                    let shift_s = 28 - (crs & 7) * 4;
+                    let field = (self.regs.cr >> shift_s) & 0xF;
+                    self.regs.cr = (self.regs.cr & !(0xF << shift_d)) | (field << shift_d);
+                    return Ok(1);
+                }
+
+                log::warn!("PPC: opcd 19 xop={} not implemented", xop);
+                Err(PpcError::IllegalInstruction(self.regs.pc.wrapping_sub(4)))
             }
             0b000111 => self.op_mulli(insn, bus),  // MULLI
             0b001011 => self.op_cmpi(insn, bus),   // CMPI (opcd 11)
