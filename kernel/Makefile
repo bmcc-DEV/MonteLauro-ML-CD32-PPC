@@ -4,10 +4,11 @@
 CC      ?= powerpc-linux-gnu-gcc
 AR      ?= powerpc-linux-gnu-ar
 CFLAGS  ?= -O2 -mcpu=603e -mhard-float -ffreestanding -nostdlib \
+            -mno-toc -mno-sdata -msdata=none \
            -I../include -I.
-LDFLAGS ?= -nostdlib -ffreestanding -Wl,-T,linker.ld
+LDFLAGS ?= -nostdlib -ffreestanding -Wl,-T,linker.ld -Wl,--build-id=none
 
-OBJS = kernel.o video.o input.o audio.o cdrom.o dma.o
+OBJS = kernel.o video.o input.o audio.o cdrom.o dma.o string.o
 
 all: libcd32.a
 
@@ -21,7 +22,8 @@ libcd32.a: $(OBJS)
 # Exemplo minimo de jogo (opcional)
 demo: libcd32.a demo/demo.c
 	$(CC) $(CFLAGS) $(LDFLAGS) demo/demo.c -L. -lcd32 -o demo.elf
-	@echo "demo.elf built"
+	powerpc-linux-gnu-objcopy -O binary demo.elf demo.bin
+	@echo "demo.elf + demo.bin built ($(shell wc -c < demo.bin) bytes)"
 
 clean:
 	rm -f *.o *.a *.elf

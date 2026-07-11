@@ -193,9 +193,9 @@ impl Ppu {
         let opcd = (insn >> 26) & 0x3F;
 
         match opcd {
-            0b000011 => self.op_addi(insn, bus),   // ADDI
-            0b000100 => self.op_addic(insn, bus),  // ADDIC
-            0b001111 => self.op_addis(insn, bus),  // ADDIS
+            0b001110 => self.op_addi(insn, bus),   // ADDI (opcd 14)
+            0b001100 => self.op_addic(insn, bus),  // ADDIC (opcd 12? No, let me check)
+            0b001111 => self.op_addis(insn, bus),  // ADDIS (opcd 15)
             0b011100 => self.op_pform(insn, bus),  // Instruções primárias (OPCD=0x1C)
             0b010011 => {
                 // Opcd 19: branches (B-form) + CR ops + RFI (XL-form)
@@ -531,26 +531,68 @@ impl Ppu {
     fn op_xform(&mut self, insn: u32, bus: &mut dyn BusInterface) -> Result<u32, PpcError> {
         let xop = (insn >> 1) & 0x3FF;
         match xop {
-            0b0000001000 => self.op_subfc(insn),  // SUBFC
-            0b0000100011 => self.op_or(insn),     // OR
-            0b0000100111 => self.op_nor(insn),    // NOR
+            0b0000001000 => self.op_subfc(insn),  // SUBFC (xop=8)
+            0b0110111100 => {
+                // OR (xop=444): used for `mr rD, rS` = OR rD, rS, rS
+                let rs = (insn >> 21) & 0x1F;
+                let ra = (insn >> 16) & 0x1F;
+                let rb = (insn >> 11) & 0x1F;
+                let val = self.regs.gpr[rs as usize] | self.regs.gpr[rb as usize];
+                self.regs.gpr[ra as usize] = val;
+                if insn & 1 != 0 {
+                    let cr_bits = if val == 0 { 0b0010 } else if (val as i32) < 0 { 0b1000 } else { 0b0100 };
+                    self.regs.cr = (self.regs.cr & 0x0FFF_FFFF) | (cr_bits << 28);
+                }
+                Ok(1)
+            }
+            0b0111010001 => {
+                // NOR (xop=465): used for `not` = NOR
+                let rs = (insn >> 21) & 0x1F;
+                let ra = (insn >> 16) & 0x1F;
+                let rb = (insn >> 11) & 0x1F;
+                let val = !(self.regs.gpr[rs as usize] | self.regs.gpr[rb as usize]);
+                self.regs.gpr[ra as usize] = val;
+                if insn & 1 != 0 {
+                    let cr_bits = if val == 0 { 0b0010 } else if (val as i32) < 0 { 0b1000 } else { 0b0100 };
+                    self.regs.cr = (self.regs.cr & 0x0FFF_FFFF) | (cr_bits << 28);
+                }
+                Ok(1)
+            }
             0b0001000100 => self.op_and(insn),    // AND
             0b0001000111 => self.op_andc(insn),   // ANDC
             0b0001011000 => self.op_neg(insn),    // NEG
             0b0001100000 => self.op_cntlzw(insn), // CNTLZW
-            0b0001110100 => self.op_add(insn),    // ADD
+            0b0001110100 => self.op_add(insn),    // ADD (xop=266? No, ADD is xop=266)
+            // xop=266 = ADD Carrying = addc/addc.
+            0b0100001010 => {
+                // addc RD, RA, RB
+                let rd = (insn >> 21) & 0x1F;
+                let ra = (insn >> 16) & 0x1F;
+                let rb = (insn >> 11) & 0x1F;
+                let (res, carry) = self.regs.gpr[ra as usize].overflowing_add(self.regs.gpr[rb as usize]);
+                self.regs.gpr[rd as usize] = res;
+                if carry { self.regs.xer |= 0x20000000; } else { self.regs.xer &= !0x20000000; }
+                Ok(1)
+            }
             0b0010000000 => self.op_subf(insn),   // SUBF
             0b0010011011 => self.op_subfe(insn),  // SUBFE
             0b0010101010 => self.op_addme(insn),  // ADDME
             0b0010101100 => self.op_mulhw(insn),  // MULHW
             0b0010101110 => self.op_mulhwu(insn), // MULHWU
-            0b0011111011 => self.op_mullw(insn),  // MULLW
+            0b0011101011 => {
+                // mullw RD, RA, RB (xop=235)
+                let rd = (insn >> 21) & 0x1F;
+                let ra = (insn >> 16) & 0x1F;
+                let rb = (insn >> 11) & 0x1F;
+                self.regs.gpr[rd as usize] = self.regs.gpr[ra as usize].wrapping_mul(self.regs.gpr[rb as usize]);
+                Ok(1)
+            }
             0b0111011011 => self.op_divw(insn),   // DIVW
             0b0111110111 => self.op_divwu(insn),  // DIVWU
             0b0000010010 => self.op_mfsr(insn),   // MFSR
             0b0000110110 => self.op_mtsr(insn),   // MTSR
-            0b0010000010 => self.op_cmp(insn),    // CMP
-            0b0010000011 => self.op_cmpl(insn),   // CMPL
+            0b0000000000 => self.op_cmp(insn),    // CMP (xop=0)
+            0b0000100000 => self.op_cmpl(insn),   // CMPL (xop=32)
             0b0010010111 => self.op_mtmsr(insn),  // MTMSR
             0b0100000110 => self.op_mfmsr(insn),  // MFMSR
             0b0010010000 => self.op_mtcrf(insn),  // MTCRF

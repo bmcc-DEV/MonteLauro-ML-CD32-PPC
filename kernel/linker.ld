@@ -5,7 +5,7 @@ ENTRY(game_main)
 
 MEMORY
 {
-    sysram (rwx) : ORIGIN = 0x00010000, LENGTH = 16M - 64K
+    sysram (rwx) : ORIGIN = 0x00002000, LENGTH = 16M - 8K
 }
 
 SECTIONS
@@ -15,3 +15,7 @@ SECTIONS
     .data : { *(.data*) } > sysram
     .bss : { *(.bss*) } > sysram
 }
+
+/* SDA base para acesso a variaveis globais sem TOC */
+_SDA_BASE_ = 0x00004000;
+_SDA2_BASE_ = 0x00004000;

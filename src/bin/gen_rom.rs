@@ -271,7 +271,7 @@ fn build_cf_aros() -> Vec<u16> {
     let tgt = 0xFF00_0000 + (cp as u32)*2;
     c.push(0x6600 | ((tgt as i32 - cur as i32) as i8 as u16 & 0xFF));
 
-    // Copia kernel AROS da ROM (offset 0x10000) para RAM (0x0000_2000)
+    // Copia kernel da ROM (offset 0x10000) para RAM (0x0000_2000) via CF
     let ksrc = 0xFF01_0000u32;
     let kdst = 0x0000_2000u32;
     c.push(0x41F9); c.push((ksrc>>16)as u16); c.push(ksrc as u16);
@@ -333,7 +333,6 @@ fn main() {
             rom.words(0x0000, &cf);
             rom.ppc(0x0100, &ppc);
 
-            // Kernel AROS opcional
             if let Some(kp) = kernel_path {
                 if let Ok(kdata) = fs::read(&kp) {
                     let max_size = 512 * 1024 - 0x10000;
@@ -347,11 +346,9 @@ fn main() {
                     eprintln!("Warning: kernel file not found: {}", kp.display());
                 }
             } else {
-                // Kernel placeholder no ROM offset 0x10000 (fonte da copia do ColdFire)
-                // O ColdFire copia 0xFF01_0000 → 0x0000_2000
-                rom.w32(0x10000, 0x4BFFFFFC); // b * em offset 0x10000 → RAM 0x2000
+                rom.w32(0x10000, 0x4BFFFFFC);
                 for off in (0x10004..0x12000).step_by(4) {
-                    rom.w32(off, 0x60000000); // ori r0, r0, 0 (NOP)
+                    rom.w32(off, 0x60000000);
                 }
             }
 
@@ -359,8 +356,52 @@ fn main() {
             rom.save(&out_path);
             println!("AROS bootstrap: PPC {} instr  CF {} words", ppc.len(), cf.len());
         }
+        "game" => {
+            // Game runtime: mesma logica do aros-bootstrap mas com entry em 0x10000
+            let cf = build_cf_aros();
+            let kdata = match &kernel_path {
+                Some(kp) => fs::read(kp).unwrap_or_default(),
+                None => vec![],
+            };
+            // Gera PPC bootstrap que pula pra entry do jogo em 0x10000
+            let mut ppc = Vec::new();
+            macro_rules! w { ($x:expr) => { ppc.push($x); } }
+            w!(i_lwz(3, 0, 0));
+            w!(i_cmpi(3, 1));
+            w!((16<<26) | (4<<21) | (2<<16) | (0xFFFD & 0x3FFF));
+            w!(i_addis(1,0,0x00FF));
+            w!(i_ori(1,1,0));
+            w!(i_addis(3,0,0x0100));
+            w!(i_ori(3,3,0x0100));
+            // struct CD32Platform (minima)
+            w!(i_addis(4,0,(-0x32CEi16)));
+            w!(i_ori(4,4,0x0001));
+            w!(i_stw(4,0,3));
+            w!(i_addis(4,0,0x013F));
+            w!(i_ori(4,4,0xFFF8));
+            w!(i_stw(4,4,3));
+            // Jump to game entry (kernel copiado para 0x2000)
+            w!(i_b(0x2000, (0x100 + ppc.len()*4 + 4) as u32));
+
+            rom.words(0x0000, &cf);
+            rom.ppc(0x0100, &ppc);
+            if kdata.len() > 0 {
+                let max_size = 512 * 1024 - 0x10000;
+                let len = kdata.len().min(max_size);
+                rom.bin(0x10000, &kdata[..len]);
+                println!("Game kernel: {} ({} bytes)", kernel_path.as_ref().unwrap().display(), len);
+            } else {
+                rom.w32(0x10000, 0x4BFFFFFC);
+                for off in (0x10004..0x12000).step_by(4) {
+                    rom.w32(off, 0x60000000);
+                }
+            }
+            rom.w16(0x7FFFE, 0xFEED);
+            rom.save(&out_path);
+            println!("Game ROM: PPC {} instr  CF {} words", ppc.len(), cf.len());
+        }
         _ => {
-            eprintln!("Unknown target: {}. Use 'hello' or 'aros-bootstrap'", target);
+            eprintln!("Unknown target: {}. Use 'hello', 'aros-bootstrap', or 'game'", target);
             std::process::exit(1);
         }
     }
