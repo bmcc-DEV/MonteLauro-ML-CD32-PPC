@@ -1,15 +1,14 @@
 # MonteLauro CD³²
 
-**MonteLauro CD³²** — Plataforma aberta baseada no console "phantom" Amiga CD³².
+**MonteLauro CD³²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
 
-Este repositório contém o emulador cycle-accurate, firmware bootstrap AROS e
-SDK para desenvolvimento de software nativo na plataforma MonteLauro ML-CD32-PPC.
-O sistema usa **AROS** como firmware padrão (open source, APL license),
-eliminando a dependência de BIOS proprietária.
-
-CI: `make ci` — pipeline completo local, sem dependência de serviços externos.
+Este repositório contém o emulador cycle-accurate, a game runtime (`libcd32.a`),
+o SDK e as ferramentas de build para desenvolvimento de jogos na plataforma
+MonteLauro ML-CD32-PPC.
 
 **Repositório:** [github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC](https://github.com/bmcc-DEV/MonteLauro-ML-CD32-PPC)
+
+**CI:** `make ci` — pipeline completo local, sem dependência externa.
 
 ---
 
@@ -18,25 +17,44 @@ CI: `make ci` — pipeline completo local, sem dependência de serviços externo
 | Componente | Status |
 |------------|--------|
 | Emulador PPC603e + ColdFire V4e cycle-accurate | ✅ |
-| MMU (SR, BAT identity, page table walk) | ✅ |
-| GPU TBDR "Lisa II" (tile-based, 640x480) | ✅ |
+| GPU TBDR "Lisa II" (tile-based, 640×480) | ✅ |
 | Áudio DSP 8 canais estéreo | ✅ |
 | DMA 4 canais (CDROM > GPU > Audio > CF) | ✅ |
 | CD-ROM 12x + ISO9660 parser | ✅ |
 | Interrupt controller (8 níveis) | ✅ |
-| Save states (serialização completa) | ✅ |
-| Disassembler PPC + ColdFire integrado ao `--trace` | ✅ |
-| Frontend SDL opcional | ✅ |
-| **AROS bootstrap — boot chain validada** | ✅ |
-| **ABI documentada — struct CD32Platform + mailbox protocol** | ✅ |
-| **BSP AROS — HAL C (kernel_cpu, console, input, cdrom)** | ✅ |
-| **Headers C/Rust automáticos da ABI** | ✅ |
-| **ABI conformance checker** | ✅ |
-| **CI/CD via GitHub Actions + Makefile** | ✅ |
+| Save states | ✅ |
+| Disassembler PPC + ColdFire (`--trace`) | ✅ |
+| Frontend SDL | ✅ |
+| **Game Runtime (libcd32.a)** — kernel C para jogos | ✅ |
+| **Game demo** — retângulos + input + contador de frames | ✅ |
+| **ISO mastering** — empacota jogo em ISO9660 | ✅ |
+| **ROM generator** — `--target game` com kernel real | ✅ |
+| **Docker PPC toolchain** — powerpc-linux-gnu-gcc (5min) | ✅ |
+| **Bootstrap AROS** — boot chain alternativa (legacy) | ✅ |
 
-### Pendente
+## Pipeline "liga o console → joga"
 
-- Port do AROS com BSP MonteLauro (`make aros-build`)
+```bash
+# 1. Build kernel + demo (via Docker, 5min setup)
+make docker-build             # toolchain PPC
+make -C kernel demo           # kernel/demo.elf + kernel/demo.bin
+
+# 2. Gerar ROM bootável
+cargo run --bin gen-rom -- --target game \
+  --kernel kernel/demo.bin --output rom/game_cd32.rom
+
+# 3. Empacotar demo em ISO
+tools/mkcd.sh kernel/demo.elf rom/jogo.iso
+
+# 4. Bootar no emulador
+cargo run --release -- --bios rom/game_cd32.rom \
+  --disc rom/jogo.iso --sdl
+```
+
+O kernel (`kernel/kernel.c`) inicializa hardware, monta CD-ROM, carrega
+`GAME.ELF` via ISO9660 + ELF loader, e pula para `game_main()`.
+
+---
 
 ## Compilando
 
@@ -51,17 +69,20 @@ cargo build --release --features sdl-frontend
 ## Executando
 
 ```bash
-# Boot ROM "Hello CD³²" (valida hardware)
-make test-hello
+# Pipeline completo de validação
+make ci
+
+# Boot RAM "Hello CD³²" (valida hardware)
+make sdl-hello
+
+# Boot game demo
+make sdl-game
 
 # Boot AROS bootstrap
-make test-aros
+make sdl-aros
 
-# Trace detalhado com disassembler
+# Trace com disassembler
 make trace-hello CYCLES=50000
-
-# Frontend gráfico
-make sdl-hello
 
 # Save / Load state
 make save
@@ -74,56 +95,45 @@ make load
 Usage: cd32-rs [OPTIONS]
 
 Options:
-  -b, --bios <BIOS>        Caminho para a Kickstart ROM (512KB)
-  -d, --disc <DISC>        Imagem de CD (ISO9660 .bin/.iso)
-  -c, --cycles <CYCLES>    Número de ciclos (0 = boot completo)
+  -b, --bios <BIOS>        Caminho para a ROM (512KB)
+  -d, --disc <DISC>        Imagem de CD (ISO9660)
+  -c, --cycles <CYCLES>    Número de ciclos
   -v, --verbose            Modo verbose
-      --trace              Trace de instruções com disassembler
-      --sdl                Frontend SDL (requer sdl-frontend)
-      --save-state <PATH>  Salvar estado do emulador
-      --load-state <PATH>  Carregar estado do emulador
-  -h, --help               Print help
+      --trace              Trace com disassembler
+      --sdl                Frontend SDL
+      --save-state <PATH>  Salvar estado
+      --load-state <PATH>  Carregar estado
 ```
 
 ## ABI (Application Binary Interface)
 
-A especificação canônica do hardware está em `docs/aros/abi.md`.
-A struct `CD32Platform` é passada ao kernel AROS via registrador r3.
+A struct `CD32Platform` contém o mapa de hardware completo, passada ao kernel
+via registrador r3 (conforme `docs/aros/abi.md`).
 
 ```bash
-# Gerar headers C e Rust da ABI
-make headers
-# → include/cd32_platform.h
-# → src/cd32_abi.rs
-
-# Validar conformidade de offsets
-cargo run --bin check-abi
+make headers        # → include/cd32_platform.h + src/cd32_abi.rs
+cargo run --bin check-abi   # valida conformidade de offsets
 ```
 
 ## Makefile
 
 ```bash
 make build                    # Compila emulador
-make headers                  # Gera headers C/Rust da ABI
-make check-abi                # Valida conformidade ABI
-make rom-hello                # Gera ROM "Hello CD³²"
-make rom-aros                 # Gera ROM bootstrap AROS
-make test-hello               # Testa ROM hello
-make test-aros                # Testa bootstrap AROS
-make trace-hello CYCLES=50000 # Trace com disassembler
-make trace-aros CYCLES=50000  # Trace do bootstrap AROS
-make sdl-hello                # Frontend gráfico
-make sdl-aros                 # Frontend com AROS
-make save                     # Save state
-make load                     # Load state
-make stress                   # Stress test (500M ciclos)
+make headers                  # Gera headers ABI
+make check-abi                # Valida conformidade
+make rom-hello                # ROM "Hello CD³²"
+make rom-game                 # ROM com game kernel
+make test-hello               # Testa hello
+make test-game                # Testa game demo
+make trace-hello              # Trace hello
+make sdl-game                 # Frontend gráfico com demo
+make docker-build             # Builda toolchain PPC (Docker)
+make docker-kernel            # Builda kernel + gera ROM via Docker
 make ci                       # Pipeline completo
-make aros-setup AROS=/path    # Integra BSP na árvore AROS
-make aros-build AROS=/path    # Compila AROS + gera ROM
 make clean                    # Limpa artefatos
 ```
 
-## Estrutura do Projeto
+## Estrutura
 
 ```
 MonteLauro-ML-CD32-PPC/
@@ -135,75 +145,82 @@ MonteLauro-ML-CD32-PPC/
 ├── src/                          # Emulador Rust
 │   ├── main.rs                   # CLI + frontend SDL
 │   ├── bus.rs                    # MIU, mailbox, DVD, CF I/O
-│   ├── memory.rs                 # Memory map (20MB RAM + VRAM + ROM)
-│   ├── hardware.rs               # Boot cycle-accurate interleave
+│   ├── memory.rs                 # Memory map
+│   ├── hardware.rs               # Boot cycle-accurate
 │   ├── interrupt.rs              # Controlador de interrupções
 │   ├── dma.rs                    # DMA 4 canais
 │   ├── save.rs                   # Save states
 │   ├── disasm.rs                 # Disassembler PPC + ColdFire
 │   ├── cdrom.rs                  # CD-ROM + ISO9660
-│   ├── cd32_abi.rs               # Struct CD32Platform (gerado)
+│   ├── cd32_abi.rs               # Struct CD32Platform
 │   ├── cpu/
 │   │   ├── ppc603e.rs            # PPC603e + MMU
 │   │   └── coldfire.rs           # ColdFire V4e
 │   ├── gpu/tbdr.rs               # GPU Lisa II TBDR
 │   └── audio/dsp.rs              # DSP áudio 8 canais
 │
-├── boards/montelauro-cd32/       # BSP AROS (C)
-│   ├── board.h                   # Definições canônicas
-│   ├── kernel_cpu.c              # InitBoard, MMU, IRQ
-│   ├── console.c                 # Framebuffer Lisa II
+├── kernel/                       # Game runtime (libcd32.a)
+│   ├── kernel.c                  # Entry point + game loader
+│   ├── video.c                   # Framebuffer 640×480
 │   ├── input.c                   # Joypad via mailbox
-│   ├── cdrom.c                   # CD-ROM via DMA
-│   ├── Makefile                  # Compila libmlcd32.a
-│   └── README.md
+│   ├── audio.c                   # DSP 8 canais
+│   ├── cdrom.c                   # ISO9660 + ELF loader
+│   ├── dma.c                     # DMA helper
+│   ├── string.c                  # memset/memcpy
+│   ├── linker.ld                 # Linker script
+│   ├── Makefile                  # Compila libcd32.a + demo
+│   └── demo/demo.c               # Exemplo de jogo
 │
-├── docs/
-│   ├── hardware/                 # Documentação do hardware
+├── include/
+│   ├── cd32.h                    # API pública para jogos
+│   └── cd32_platform.h           # Header C da ABI
+│
+├── boards/montelauro-cd32/       # BSP AROS (legacy)
+├── docker/
+│   ├── Dockerfile                # Imagem com toolchain PPC
+│   └── entrypoint.sh
+├── tools/
+│   ├── gen_headers.rs            # Gerador headers ABI
+│   ├── check_abi_conformance.rs  # Validador de offsets
+│   ├── setup-aros.sh             # Integração AROS (legacy)
+│   ├── build-aros.sh             # Build AROS (legacy)
+│   └── mkcd.sh                   # Mastering ISO9660
+├── src/bin/gen_rom.rs            # Gerador de ROMs
+├── docs/                          # Documentação
+│   ├── hardware/
 │   │   ├── memory_map.md
 │   │   ├── boot_sequence.md
 │   │   └── bios_dump_notes.md
-│   └── aros/abi.md               # ABI AROS PPC
-│
-├── include/cd32_platform.h       # Header C da ABI (gerado)
-├── sdk/api.md                    # API libcd32
-│
-├── tools/
-│   ├── gen_headers.rs            # Gerador headers C/Rust
-│   ├── check_abi_conformance.rs  # Validador de offsets
-│   └── setup-aros.sh             # Integração com AROS
-│
-├── src/bin/gen_rom.rs            # Gerador de ROM sintética
-├── .github/workflows/ci.yml      # GitHub Actions
+│   └── aros/abi.md
 └── rom/                          # ROMs geradas
 ```
 
-## Boot Chain AROS
+## Boot Chain (Game Runtime)
 
 ```
 Power On
   │
   ▼
-ColdFire (0xFF00_0000)
-  ├── Auto-teste MIU, Chip RAM
-  ├── Copia PPC bootstrap + kernel AROS da ROM para SysRAM
-  ├── Escreve struct CD32Platform na Chip RAM
-  ├── Handoff signature → STOP
+ColdFire
+  ├── Copia PPC bootstrap + kernel da ROM para SysRAM
+  ├── Escreve struct CD32Platform em 0x0000_FC00
+  ├── Handoff → STOP
   │
   ▼
-PPC (0x0000_0100)
+PPC bootstrap
   ├── Spin no handoff
-  ├── BAT identity mapping (256MB)
-  ├── Stack pointer, CD32Platform struct
-  ├── Registradores r3-r12 conforme ABI
-  └── Jump para kernel AROS (0x0000_2000)
+  ├── Stack pointer (r1 = 0x00FF_0000)
+  ├── Platform struct em r3
+  └── Jump para kernel (0x0000_2000)
   │
   ▼
-AROS kernel
-  ├── InitBoard() → lê CD32Platform → HW init
-  ├── Console: banner "MonteLauro CD3² v1.0"
-  ├── Input: joypad via ColdFire mailbox
-  └── CD-ROM: DMA channel 0 + ISO9660
+kernel.c:_start()
+  ├── cd32_video_init() → framebuffer Lisa II
+  ├── cd32_printf() → banner de boot
+  ├── cd32_audio_init() → DSP 8 canais
+  ├── cd32_cdrom_init() → monta ISO9660
+  ├── cd32_cdrom_load("GAME.ELF") → ELF parser + DMA
+  └── game_main() → o jogo
 ```
 
 ## Hardware Especulado
@@ -213,14 +230,13 @@ AROS kernel
 | CPU | PowerPC 603e @ 266MHz |
 | Coprocessador | ColdFire V4e @ 140MHz |
 | GPU | TBDR custom, 6M polys/s ("Lisa II") |
-| RAM | 20MB unificada (16MB + 4MB Chip RAM) |
+| RAM | 20MB (16MB SysRAM + 4MB Chip RAM) |
 | VRAM | 8MB (framebuffers, depth, texturas) |
 | Áudio | DSP + ColdFire, 8 canais estéreo |
 | Mídia | CD-ROM 12x (expansão DVD opcional) |
-| SO | AROS |
+| SO | Runtime próprio + AROS (legacy) |
 
 ## Licença
 
-O código original MonteLauro (emulador, bootstrap, tooling, SDK) é distribuído
-sob licença MIT. Componentes derivados de AROS seguem a AROS Public License (APL).
-Consulte `LICENSE`, `LICENSE.APL` e `LICENSE.GPL/LGPL` para detalhes.
+O código original MonteLauro (emulador, runtime, ferramentas) é MIT.
+Componentes derivados de AROS seguem a AROS Public License (APL).
