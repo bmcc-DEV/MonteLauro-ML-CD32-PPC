@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD+G² — Kernel mínimo para jogos
+ * MontêLauro CD+G² — Kernel mínimo para jogos
  *
  * Entry point chamado pelo bootstrap PPC com:
  *   r3 = &CD32Platform (struct na Chip RAM)
@@ -25,7 +25,7 @@ void _start(void)
 
     // Banner de boot
     cd32_video_clear(0x00000000);
-cd32_printf("MonteLauro CD+G²  v1.0\n");
+cd32_printf("MontêLauro CD+G²  v1.0\n");
      cd32_printf("PPC603e @ 266MHz  |  ColdFire V4e @ 140MHz\n");
      cd32_printf("28MB Unified RAM | GPU Lisa II\n\n");
 

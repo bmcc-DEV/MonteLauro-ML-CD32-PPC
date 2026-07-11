@@ -1,4 +1,4 @@
-name: MonteLauro CD+G² CI
+name: MontêLauro CD+G² CI
 
 on: [push, pull_request]
 

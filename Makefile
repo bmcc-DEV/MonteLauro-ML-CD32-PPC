@@ -1,4 +1,4 @@
-# MonteLauro CD+G² — Makefile de Desenvolvimento
+# MontêLauro CD+G² — Makefile de Desenvolvimento
 
 CARGO    ?= cargo
 ROM      ?= rom/game_cd32.rom

@@ -2,7 +2,7 @@
 name = "ml-gd2-rs"
 version = "0.1.0"
 edition = "2021"
-description = "MonteLauro CD+G² emulator — retro/new console project"
+description = "MontêLauro CD+G² emulator — retro/new console project"
 default-run = "ml-gd2-rs"
 
 [dependencies]

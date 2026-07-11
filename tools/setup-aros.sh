@@ -14,7 +14,7 @@ BOARD_DIR="$AROS/rom/boards/ml-gd2"
 BOARD_MAKE="$AROS/boards/ml-gd2"
 BSP_SRC="boards/ml-gd2"
 
-echo "==> Integrando BSP MonteLauro CD+G² em $AROS"
+echo "==> Integrando BSP MontêLauro CD+G² em $AROS"
 
 # 1. Copiar BSP
 mkdir -p "$BOARD_DIR"
@@ -24,7 +24,7 @@ echo "  BSP copiado para $BOARD_DIR"
 # 2. Criar board config
 mkdir -p "$BOARD_MAKE"
 cat > "$BOARD_MAKE/makefile" << 'MAKEEOF'
-# MonteLauro CD+G² (ML GD²) board config para AROS
+# MontêLauro CD+G² (ML GD²) board config para AROS
 CPU = ppc
 ARCH = sam440
 BOARD = ml-gd2

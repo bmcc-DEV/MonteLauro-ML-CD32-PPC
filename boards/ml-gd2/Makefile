@@ -1,4 +1,4 @@
-# MonteLauro CD+G² (ML GD²) Board Support Package
+# MontêLauro CD+G² (ML GD²) Board Support Package
 # Makefile para integração com o build system do AROS
 #
 # Uso (dentro da árvore AROS):

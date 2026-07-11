@@ -1,5 +1,5 @@
 #!/bin/sh
-# MonteLauro CD+G² PPC Toolchain entrypoint.
+# MontêLauro CD+G² PPC Toolchain entrypoint.
 # Se um comando for passado, executa ele. Senao, valida o toolchain.
 
 if [ $# -gt 0 ]; then
@@ -7,7 +7,7 @@ if [ $# -gt 0 ]; then
 fi
 
 CC="powerpc-linux-gnu-gcc"
-echo "=== MonteLauro CD+G² PPC Toolchain ==="
+echo "=== MontêLauro CD+G² PPC Toolchain ==="
 echo "Toolchain: $(which $CC)"
 $CC --version | head -1
 echo "PPC cross-compiler: OK"

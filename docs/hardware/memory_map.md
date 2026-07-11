@@ -1,8 +1,8 @@
-# MonteLauro CD+G² Memory Map (v0.4 — RAM unificada 28MB)
+# MontêLauro CD+G² Memory Map (v0.4 — RAM unificada 28MB)
 
 ## Visão Geral
 
-O MonteLauro CD+G² (ML GD²) usa um espaço de endereçamento de 32 bits. 
+O MontêLauro CD+G² (ML GD²) usa um espaço de endereçamento de 32 bits. 
 A partir da v0.4, **System RAM e Chip RAM foram unificadas** num único 
 banco de **28MB** acessível por PPC e ColdFire (via MIU).
 

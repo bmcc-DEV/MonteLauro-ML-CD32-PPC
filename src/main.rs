@@ -26,7 +26,7 @@ const JOY_START: u16 = 1 << 6;
 const JOY_SELECT: u16 = 1 << 7;
 
 #[derive(Parser)]
-#[command(name = "ml-gd2-rs", version, about = "MonteLauro CD+G² Emulator")]
+#[command(name = "ml-gd2-rs", version, about = "MontêLauro CD+G² Emulator")]
 struct Cli {
     /// Caminho para o dump da Kickstart ROM (512KB)
     #[arg(short = 'b', long = "bios", default_value = "kickstart.rom")]

@@ -1,7 +1,7 @@
-# MonteLauro CD+G² — ML GD² Board Support Package
+# MontêLauro CD+G² — ML GD² Board Support Package
 
 Este diretório contém o BSP (Board Support Package) para integrar o
-MonteLauro CD+G² com o kernel AROS PPC.
+MontêLauro CD+G² com o kernel AROS PPC.
 
 ## Estrutura
 

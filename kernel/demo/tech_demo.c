@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD+G² — Tech Demo
+ * MontêLauro CD+G² — Tech Demo
  *
  * Compilar: make demo DEMO=tech_demo
  * Executa no emulador: cargo run --release -- --bios rom/game_cd32.rom --disc rom/jogo.iso --sdl

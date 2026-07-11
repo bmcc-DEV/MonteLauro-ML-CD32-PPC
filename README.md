@@ -1,10 +1,10 @@
-# MonteLauro CD+G²
+# MontêLauro CD+G²
 
-**MonteLauro CD+G²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
+**MontêLauro CD+G²** — Plataforma aberta de videogame baseada no console "phantom" Amiga CD³².
 
 Este repositório contém o emulador cycle-accurate, a game runtime (`libml-gd2.a`),
 o SDK e as ferramentas de build para desenvolvimento de jogos na plataforma
-MonteLauro CD+G² (apelido: **ML GD²**).
+MontêLauro CD+G² (apelido: **ML GD²**).
 
 **Repositório:** [github.com/bmcc-DEV/ml-gd2](https://github.com/bmcc-DEV/ml-gd2)
 
@@ -237,5 +237,5 @@ kernel.c:_start()
 
 ## Licença
 
-O código original do projeto MonteLauro CD+G² (emulador, runtime, ferramentas) é MIT.
+O código original do projeto MontêLauro CD+G² (emulador, runtime, ferramentas) é MIT.
 Componentes derivados de AROS seguem a AROS Public License (APL).

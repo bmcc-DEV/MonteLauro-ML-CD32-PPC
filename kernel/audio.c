@@ -1,5 +1,5 @@
 /*
- * MonteLauro CD+G² — Áudio (DSP + DMA)
+ * MontêLauro CD+G² — Áudio (DSP + DMA)
  *
  * 8 canais estéreo, 16-bit, 44.1kHz.
  * Cada canal tem FIFO de 2KB, preenchido via DMA da Chip RAM.
