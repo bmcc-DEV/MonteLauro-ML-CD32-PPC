@@ -19,7 +19,7 @@ Reset vector ColdFire (0xFF00_0000 → 0xFF00_0004):
 O ColdFire executa o **Kickstart Bootstrap** — um mini-kernel que:
 
 1. **Inicializa MIU** — configura wait-states, ativa o clock do PPC.
-2. **Testa Chip RAM** — verifica os 4MB, marca bad blocks se houver.
+2. **Testa Unified RAM** — verifica os 24MB, marca bad blocks se houver.
 3. **Carrega o microkernel PPC** — copia ~64KB de código do Boot ROM para System RAM em 0x0000_1000.
 4. **Libera HRESET** — o PPC sai de reset e começa a executar em 0x0000_0100 (vetor reset PPC).
 5. **Entra em modo "Companion"** — ColdFire fica escravo, esperando comandos do PPC via mailbox.

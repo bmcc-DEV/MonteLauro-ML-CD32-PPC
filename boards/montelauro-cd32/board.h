@@ -108,11 +108,11 @@
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;          /* 0xCD320001 */
-    uint32_t total_ram;      /* 0x013FFFF8 (20MB) */
-    uint32_t chip_ram_base;  /* 0x01000000 */
-    uint32_t chip_ram_size;  /* 4MB */
+    uint32_t total_ram;      /* 0x01800000 (24MB unified) */
+    uint32_t chip_ram_base;  /* 0x00000000 (alias unified) */
+    uint32_t chip_ram_size;  /* 24MB */
     uint32_t sys_ram_base;   /* 0x00000000 */
-    uint32_t sys_ram_size;   /* 16MB */
+    uint32_t sys_ram_size;   /* 24MB */
     uint32_t vram_base;      /* 0x04010000 */
     uint32_t vram_size;      /* 8MB */
     uint32_t boot_rom_base;  /* 0xFF000000 */

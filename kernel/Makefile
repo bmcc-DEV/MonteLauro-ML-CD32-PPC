@@ -3,7 +3,7 @@
 
 CC      ?= powerpc-linux-gnu-gcc
 AR      ?= powerpc-linux-gnu-ar
-CFLAGS  ?= -O2 -mcpu=603e -mhard-float -ffreestanding -nostdlib \
+CFLAGS  ?= -O0 -mcpu=603e -mhard-float -ffreestanding -nostdlib \
             -mno-toc -mno-sdata -msdata=none \
            -I../include -I.
 LDFLAGS ?= -nostdlib -ffreestanding -Wl,-T,linker.ld -Wl,--build-id=none

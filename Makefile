@@ -37,7 +37,7 @@ headers:
 	cargo run --bin gen-headers --release
 
 check-abi:
-	cargo run --bin check-abi --release || true
+	cargo run --bin check-abi --release
 
 # ── Testes ────────────────────────────────────────────────────────────
 

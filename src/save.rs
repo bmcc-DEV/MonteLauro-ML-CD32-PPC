@@ -286,9 +286,9 @@ pub fn save_state(hw: &Cd32Hardware, path: &Path) -> Result<(), SaveError> {
 
     write_sec(&mut file, SEC_PPC_REGS, &save_ppc(&hw.ppc))?;
     write_sec(&mut file, SEC_CF_REGS, &save_cf(&hw.coldfire))?;
-    write_sec(&mut file, SEC_SYSTEM_RAM, &save_mem_region(&hw.bus.mem.system_ram()))?;
-    write_sec(&mut file, SEC_CHIP_RAM, &save_mem_region(hw.bus.mem.chip_ram()))?;
-    write_sec(&mut file, SEC_VRAM, &save_mem_region(hw.bus.gpu.vram()))?;
+    // SEC_SYSTEM_RAM = RAM unificada 24MB (Chip RAM legado vazio/omitido)
+    write_sec(&mut file, SEC_SYSTEM_RAM, &save_mem_region(hw.bus.mem.unified_ram()))?;
+    write_sec(&mut file, SEC_VRAM, &save_mem_region(hw.bus.mem.vram()))?;
     write_sec(&mut file, SEC_GPU, &save_gpu(&hw.bus.gpu))?;
     write_sec(&mut file, SEC_AUDIO, &save_audio(&hw.bus.audio))?;
     write_sec(&mut file, SEC_CDROM, &save_cdrom(&hw.bus.cdrom))?;
@@ -321,9 +321,14 @@ pub fn load_state(hw: &mut Cd32Hardware, path: &Path) -> Result<(), SaveError> {
         match *sec_id {
             SEC_PPC_REGS => load_ppc(&mut hw.ppc, sec_data)?,
             SEC_CF_REGS => load_cf(&mut hw.coldfire, sec_data)?,
-            SEC_SYSTEM_RAM => load_mem_region(hw.bus.mem.system_ram_mut(), sec_data),
-            SEC_CHIP_RAM => load_mem_region(hw.bus.mem.chip_ram_mut(), sec_data),
-            SEC_VRAM => hw.bus.gpu.load_vram(sec_data),
+            SEC_SYSTEM_RAM => load_mem_region(hw.bus.mem.unified_ram_mut(), sec_data),
+            // Legado: Chip RAM era buffer separado; agora unificada — ignora ou merge
+            SEC_CHIP_RAM => {
+                if sec_data.len() == hw.bus.mem.unified_ram().len() {
+                    load_mem_region(hw.bus.mem.unified_ram_mut(), sec_data);
+                }
+            }
+            SEC_VRAM => load_mem_region(hw.bus.mem.vram_mut(), sec_data),
             SEC_GPU => load_gpu(&mut hw.bus.gpu, sec_data)?,
             SEC_AUDIO => load_audio(&mut hw.bus.audio, sec_data)?,
             SEC_CDROM => load_cdrom(&mut hw.bus.cdrom, sec_data)?,

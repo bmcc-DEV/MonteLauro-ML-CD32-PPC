@@ -209,7 +209,7 @@ ColdFire
   ▼
 PPC bootstrap
   ├── Spin no handoff
-  ├── Stack pointer (r1 = 0x00FF_0000)
+  ├── Stack pointer (r1 = 0x017F_0000)
   ├── Platform struct em r3
   └── Jump para kernel (0x0000_2000)
   │
@@ -230,7 +230,7 @@ kernel.c:_start()
 | CPU | PowerPC 603e @ 266MHz |
 | Coprocessador | ColdFire V4e @ 140MHz |
 | GPU | TBDR custom, 6M polys/s ("Lisa II") |
-| RAM | 20MB (16MB SysRAM + 4MB Chip RAM) |
+| RAM | 24MB unificada (0x00000000–0x017FFFFF) |
 | VRAM | 8MB (framebuffers, depth, texturas) |
 | Áudio | DSP + ColdFire, 8 canais estéreo |
 | Mídia | CD-ROM 12x (expansão DVD opcional) |

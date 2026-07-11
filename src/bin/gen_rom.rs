@@ -177,33 +177,32 @@ fn build_ppc_aros() -> Vec<u32> {
     w!(i_mtspr(536, 3));          // DBAT0U = IBAT0U
     w!(i_mtspr(537, 3));          // DBAT0L = IBAT0L
 
-    // === Fase 3: Stack pointer ===
-    w!(i_addis(1, 0, 0x00FF));    // r1 = 0x00FF_0000
+    // === Fase 3: Stack pointer (64KB abaixo do topo dos 24MB) ===
+    w!(i_addis(1, 0, 0x017F));    // r1 = 0x017F_0000
     w!(i_ori(1, 1, 0x0000));
 
-    // === Fase 4: Construir struct CD32Platform na Sys RAM ===
-    w!(i_addis(3, 0, 0x0000));   // r3 = 0x0000_FC00 (&platform, dentro da SysRAM)
+    // === Fase 4: Construir struct CD32Platform na RAM unificada ===
+    w!(i_addis(3, 0, 0x0000));   // r3 = 0x0000_FC00 (&platform)
     w!(i_ori(3, 3, 0xFC00));
 
     // magic = 0xCD32_0001
     w!(i_addis(4, 0, (-0x32CEi16)));
     w!(i_ori(4, 4, 0x0001));     // r4 = 0xCD32_0001
     w!(i_stw(4, 0, 3));
-    // total_ram = 20MB = 0x013F_FFF8
-    w!(i_addis(4, 0, 0x013F));
-    w!(i_ori(4, 4, 0xFFF8));
+    // total_ram = 24MB = 0x0180_0000
+    w!(i_addis(4, 0, 0x0180));
     w!(i_stw(4, 4, 3));
-    // chip_ram_base = 0x0100_0000
-    w!(i_addis(4, 0, 0x0100));
+    // chip_ram_base = 0 (alias unified)
+    w!(i_addis(4, 0, 0));
     w!(i_stw(4, 8, 3));
-    // chip_ram_size = 4MB
-    w!(i_addis(4, 0, 0x0040));
+    // chip_ram_size = 24MB
+    w!(i_addis(4, 0, 0x0180));
     w!(i_stw(4, 12, 3));
     // sys_ram_base = 0
     w!(i_addis(4, 0, 0));
     w!(i_stw(4, 16, 3));
-    // sys_ram_size = 16MB
-    w!(i_addis(4, 0, 0x0100));
+    // sys_ram_size = 24MB
+    w!(i_addis(4, 0, 0x0180));
     w!(i_stw(4, 20, 3));
     // vram_base = 0x0401_0000
     w!(i_addis(4, 0, 0x0401));
@@ -230,8 +229,7 @@ fn build_ppc_aros() -> Vec<u32> {
     // === Fase 5: Passar params nos registradores ===
     w!(i_addis(4, 0, 0x0001));
     w!(i_ori(4, 4, 0x0001));     // r4 = CPUType
-    w!(i_addis(5, 0, 0x013F));
-    w!(i_ori(5, 5, 0xFFF8));     // r5 = MemSize
+    w!(i_addis(5, 0, 0x0180));   // r5 = MemSize 24MB
     w!(i_addis(6, 0, 0));
     w!(i_ori(6, 6, 0x0002));     // r6 = PlatformInfo
     w!(i_addis(7, 0, 0x0100));   // r7 = ColdFireMailbox
@@ -369,16 +367,16 @@ fn main() {
             w!(i_lwz(3, 0, 0));
             w!(i_cmpi(3, 1));
             w!((16<<26) | (4<<21) | (2<<16) | (0xFFFD & 0x3FFF));
-            w!(i_addis(1,0,0x00FF));
+            w!(i_addis(1,0,0x017F)); // stack @ 0x017F_0000 (24MB unified)
             w!(i_ori(1,1,0));
-            // struct CD32Platform em 0x0000_FC00 (dentro da SysRAM, longe de conflitos)
+            // struct CD32Platform em 0x0000_FC00
             w!(i_addis(3,0,0x0000));
             w!(i_ori(3,3,0xFC00));
             w!(i_addis(4,0,(-0x32CEi16)));
             w!(i_ori(4,4,0x0001));
             w!(i_stw(4,0,3));
-            w!(i_addis(4,0,0x013F));
-            w!(i_ori(4,4,0xFFF8));
+            // total_ram = 24MB
+            w!(i_addis(4,0,0x0180));
             w!(i_stw(4,4,3));
             // Jump to game entry (kernel em 0x2000)
             w!(i_b(0x2000, (0x100 + ppc.len()*4) as u32));

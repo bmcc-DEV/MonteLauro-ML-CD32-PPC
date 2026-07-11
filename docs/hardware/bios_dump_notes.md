@@ -63,6 +63,6 @@ Offset 0x014: reserved
 Offset 0x020: loader code (até 48KB)
 ```
 
-O CD³² introduz o flag `bit 0 = PPC native` — se setado, o ColdFire não precisa estar ativo durante a execução do jogo. Isso permite que o jogo rode 100% em PPC e use toda a RAM de 20MB sem contenção de barramento.
+O CD³² introduz o flag `bit 0 = PPC native` — se setado, o ColdFire não precisa estar ativo durante a execução do jogo. Isso permite que o jogo rode 100% em PPC e use toda a RAM unificada de 24MB.
 
 *(Documentação comunitária — dados extraídos de dumps de protótipos rev B serial #007 e #011)*

@@ -47,7 +47,7 @@ O kernel deve ligar caches quando ready.
 
 | Registrador | Valor |
 |-------------|-------|
-| r1 | Topo da System RAM — 64KB (0x00FF_0000) |
+| r1 | Topo da Unified RAM − 64KB (0x017F_0000) |
 | r2 | TOC pointer (reservado para AROS, 0 se não usado) |
 
 ### Registradores de Parâmetro
@@ -56,7 +56,7 @@ O kernel deve ligar caches quando ready.
 |-----|------|-----------|
 | r3 | SysBase | Ponteiro para estrutura `struct CD32Platform` (ver abaixo) |
 | r4 | CPUType | 0x0001_0001 (PPC603e, revision 1) |
-| r5 | MemSize | Tamanho total de RAM em bytes (20MB = 0x013F_FFF8) |
+| r5 | MemSize | Tamanho total de RAM em bytes (24MB = 0x0180_0000) |
 | r6 | PlatformInfo | 0x0000_0002 (CD32/PPC v1) |
 | r7 | ColdFireMailbox | Endereço da mailbox PPC↔ColdFire (0x0100_0000) |
 | r8 | GPUBase | Endereço base da GPU (0x0400_0000) |
@@ -67,16 +67,16 @@ O kernel deve ligar caches quando ready.
 
 ## Estrutura `struct CD32Platform`
 
-Apontada por r3, alocada no início da Chip RAM (0x0100_0000).
+Apontada por r3, alocada em 0x0000_FC00 (RAM unificada).
 
 ```c
 struct CD32Platform {
     uint32_t  magic;           // 0xCD32_0001
-    uint32_t  total_ram;       // bytes (20MB)
-    uint32_t  chip_ram_base;   // 0x0100_0000
-    uint32_t  chip_ram_size;   // 4MB
-    uint32_t  sys_ram_base;    // 0x0000_0000
-    uint32_t  sys_ram_size;    // 16MB
+    uint32_t  total_ram;       // bytes (24MB = 0x01800000)
+    uint32_t  chip_ram_base;   // 0x00000000 (alias unified)
+    uint32_t  chip_ram_size;   // 24MB
+    uint32_t  sys_ram_base;    // 0x00000000
+    uint32_t  sys_ram_size;    // 24MB
     uint32_t  vram_base;       // 0x0401_0000
     uint32_t  vram_size;       // 8MB
     uint32_t  boot_rom_base;   // 0xFF00_0000
@@ -88,9 +88,6 @@ struct CD32Platform {
     uint32_t  cdrom_base;      // 0x0300_0000
     uint32_t  gpio_base;       // 0x0220_0020
     uint32_t  coldfire_base;   // 0x0220_0000
-    uint32_t  intc_base;       // MIU regs + soft IRQ controller
-    uint32_t  tick_hz;         // frequencia do timer (0 = usar PPC dec)
-    uint8_t   pad[512 - 5*16]; // padding para 512 bytes
 };
 ```
 
@@ -144,30 +141,25 @@ uint32_t cf_read_resp() {
 
 ```
 0x0000_0000 ┌────────────────────┐
-            │ System RAM (16MB)  │  AROS kernel + apps
-0x0100_0000 ├────────────────────┤
-            │ Chip RAM (4MB)     │  Mailbox, framebuffers,
-            │                    │  audio DMA, primitive lists
-0x0140_0000 └────────────────────┘
-              ...
+            │ Unified RAM 24MB   │  kernel + apps + DMA buffers
+0x0100_0000 │  Mailbox overlay   │  16 bytes MMIO
+0x017F_FFFF └────────────────────┘
 0x0220_0000 ┌────────────────────┐
             │ ColdFire I/O       │  GPIO, UART, SPI, RTC
 0x0300_0000 ├────────────────────┤
             │ CD-ROM Regs        │
 0x03D0_0000 ├────────────────────┤
-            │ Audio DSP          │  Registers de 64 words
+            │ Audio DSP          │
 0x03E0_0000 ├────────────────────┤
-            │ DMA Controller     │  4 canais
+            │ DMA Controller     │
 0x0400_0000 ├────────────────────┤
-            │ GPU Regs (64KB)    │  Lisa II TBDR
+            │ GPU Regs (64KB)    │
 0x0401_0000 ├────────────────────┤
-            │ VRAM (8MB)         │  Framebuffer + texturas
+            │ VRAM (8MB)         │  framebuffer único
 0x0500_0000 ├────────────────────┤
-            │ MIU Regs           │  Memory Interface Unit
-0x0800_0000 ├────────────────────┤
-            │ DVD Expansion      │  Slot opcional
+            │ MIU Regs           │
 0xFF00_0000 └────────────────────┘
-            │ Boot ROM (512KB)   │  Read-only após boot
+            │ Boot ROM (512KB)   │
 ```
 
 ## Sequência de Boot Completa

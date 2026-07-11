@@ -175,20 +175,20 @@ fn run_sdl_frontend(mut hw: Cd32Hardware) {
         PixelFormatEnum::ARGB8888, 640, 480,
     ).expect("Texture creation failed");
 
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
+    let mut running = true;
+    let mut event_pump = sdl.event_pump().expect("event pump");
 
     canvas.clear();
     canvas.present();
 
     let mut joypad: u16 = 0;
 
-    while r.load(Ordering::Relaxed) {
-        for event in sdl.event_pump().expect("event pump").poll_iter() {
+    while running {
+        for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    running.store(false, Ordering::Relaxed);
+                    running = false;
                 }
                 Event::KeyDown { keycode: Some(k), .. } => {
                     joypad |= match k {
@@ -225,16 +225,21 @@ fn run_sdl_frontend(mut hw: Cd32Hardware) {
         // Simula ~16ms de hardware (1 frame a ~60fps)
         hw.run_cycles(4_400_000); // ~16ms a 266MHz
 
-        // Atualiza display a partir da VRAM
-        let fb = hw.bus.gpu.framebuffer_rgba();
+        // VRAM unificada (mesmo buffer que o guest escreve)
+        let fb = hw.bus.framebuffer_rgba();
         texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {
             for y in 0..480 {
                 let src_start = y * 640 * 4;
                 let src_end = src_start + (640 * 4).min(fb.len().saturating_sub(src_start));
+                if src_start >= fb.len() {
+                    break;
+                }
                 let src = &fb[src_start..src_end];
                 let dst_start = y * pitch;
                 let dst_end = dst_start + src.len().min(buffer.len().saturating_sub(dst_start));
-                buffer[dst_start..dst_end].copy_from_slice(&src[..dst_end - dst_start]);
+                if dst_start < buffer.len() {
+                    buffer[dst_start..dst_end].copy_from_slice(&src[..dst_end - dst_start]);
+                }
             }
         });
 

@@ -27,7 +27,7 @@ void _start(void)
     cd32_video_clear(0x00000000);
     cd32_printf("MonteLauro CD3²  v1.0\n");
     cd32_printf("PPC603e @ 266MHz  |  ColdFire V4e @ 140MHz\n");
-    cd32_printf("20MB RAM | 8MB VRAM | GPU Lisa II TBDR\n\n");
+    cd32_printf("24MB Unified RAM | 8MB VRAM | GPU Lisa II\n\n");
 
     cd32_audio_init();
     cd32_input_init();

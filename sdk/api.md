@@ -7,9 +7,8 @@ O acesso ao hardware é feito via memory-mapped I/O nos barramentos PPC e ColdFi
 
 | Endereço | Região | Descrição |
 |----------|--------|-----------|
-| 0x0000_0000 | System RAM (16MB) | Memória principal, zero wait-state |
-| 0x0100_0000 | Chip RAM (4MB) | Compartilhada PPC+ColdFire, framebuffers, audio, DMA |
-| 0x0100_0000 | Mailbox | 16 bytes de comunicação PPC↔ColdFire |
+| 0x0000_0000 | Unified RAM (24MB) | Memória principal, zero wait-state (PPC) |
+| 0x0100_0000 | Mailbox (overlay) | 16 bytes MMIO PPC↔ColdFire |
 | 0x0200_0000 | ColdFire Local RAM (2MB) | Escrita apenas pelo ColdFire |
 | 0x0220_0000 | ColdFire I/O | UART, SPI, GPIO (joypad), RTC |
 | 0x0300_0000 | CDROM Regs | Controle do CD-ROM |
@@ -151,7 +150,7 @@ int is_pressed(uint16_t joy, int bit) {
 ### Mailbox PPC↔ColdFire
 
 A mailbox permite que o PPC envie comandos ao ColdFire.
-São 16 bytes no início da Chip RAM (0x0100_0000).
+São 16 bytes em overlay MMIO em 0x0100_0000 (dentro da janela da RAM unificada).
 
 | Offset | Nome | Descrição |
 |--------|------|-----------|
@@ -235,8 +234,7 @@ Comandos:
 
 | Região | Endereço | Tamanho |
 |--------|----------|---------|
-| System RAM | 0x0000_0000 | 16 MB |
-| Chip RAM | 0x0100_0000 | 4 MB |
+| Unified RAM | 0x0000_0000 | 24 MB |
 | Boot ROM | 0xFF00_0000 | 512 KB |
 | VRAM | 0x0401_0000 | 8 MB |
 
